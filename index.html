@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b121a" />
+    <title>X-Ray Mirror</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <a class="brand" href="/" aria-label="X-Ray Mirror home">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>X-Ray Mirror</span>
+        </a>
+        <span class="header-note">Face tracking</span>
+      </header>
+
+      <main class="workspace">
+        <div class="page-heading">
+          <h1>Your mirror</h1>
+          <div class="status-indicator">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="camera-status" role="status" aria-live="polite">Camera is off</span>
+          </div>
+        </div>
+
+        <div class="workspace-grid">
+          <section class="viewer-panel" aria-label="Camera preview">
+            <div id="stage" class="camera-stage">
+              <div id="camera-image" class="camera-image" hidden>
+                <video id="camera-video" autoplay muted playsinline aria-label="Mirrored camera preview"></video>
+                <canvas id="skull-overlay" aria-hidden="true" hidden></canvas>
+                <canvas id="tracking-overlay" aria-hidden="true" hidden></canvas>
+              </div>
+              <div id="camera-placeholder" class="camera-placeholder">
+                <div class="camera-icon" aria-hidden="true"><span></span></div>
+                <p>Start your camera to see the live view.</p>
+              </div>
+            </div>
+            <div class="viewer-footer">
+              <span class="viewer-label"><span class="viewer-label-dot" aria-hidden="true"></span> CAMERA PREVIEW</span>
+              <span>Mirrored view</span>
+            </div>
+          </section>
+
+          <aside class="control-panel" aria-label="Camera and fit controls">
+            <div class="panel-heading">
+              <h2>Camera</h2>
+            </div>
+
+            <div class="camera-actions">
+              <button id="start-camera" class="button button-primary" type="button">Start camera</button>
+              <button id="stop-camera" class="button button-secondary" type="button" disabled>Stop</button>
+            </div>
+
+            <div id="camera-message" class="camera-message" role="status" aria-live="polite" hidden></div>
+            <button id="retry-tracking" class="button button-secondary retry-button" type="button" hidden>Retry</button>
+
+            <div class="control-divider"></div>
+
+            <div class="tracking-control">
+              <div>
+                <label for="show-tracking">Show tracking data</label>
+                <p>Landmarks and performance</p>
+              </div>
+              <input id="show-tracking" type="checkbox" />
+            </div>
+
+            <dl id="tracking-stats" class="tracking-stats" aria-label="Tracking performance" hidden>
+              <div><dt>Render FPS</dt><dd id="render-fps">—</dd></div>
+              <div><dt>Tracking FPS</dt><dd id="tracking-fps">—</dd></div>
+              <div><dt>Detection</dt><dd id="inference-ms">—</dd></div>
+              <div><dt>Frame age</dt><dd id="overlay-ms">—</dd></div>
+              <div><dt>Processor</dt><dd id="tracking-delegate">—</dd></div>
+            </dl>
+
+            <div class="control-divider"></div>
+
+            <fieldset class="fit-controls">
+              <legend>Fit to my head</legend>
+              <div id="skull-message" class="camera-message" role="status" aria-live="polite" hidden></div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-size">Overall size</label><output id="fit-size-value" for="fit-size">1.00×</output></div>
+                <input id="fit-size" type="range" min="0.5" max="1.5" step="0.01" value="1" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-width">Width</label><output id="fit-width-value" for="fit-width">1.00×</output></div>
+                <input id="fit-width" type="range" min="0.5" max="1.5" step="0.01" value="1" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-height">Height</label><output id="fit-height-value" for="fit-height">1.00×</output></div>
+                <input id="fit-height" type="range" min="0.5" max="1.5" step="0.01" value="1" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-depth">Depth</label><output id="fit-depth-value" for="fit-depth">1.00×</output></div>
+                <input id="fit-depth" type="range" min="0.5" max="1.5" step="0.01" value="1" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-x">Left / right</label><output id="fit-x-value" for="fit-x">0.0 cm</output></div>
+                <input id="fit-x" type="range" min="-8" max="8" step="0.1" value="0" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-y">Up / down</label><output id="fit-y-value" for="fit-y">0.0 cm</output></div>
+                <input id="fit-y" type="range" min="-8" max="8" step="0.1" value="0" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading"><label for="fit-z">Forward / back</label><output id="fit-z-value" for="fit-z">0.0 cm</output></div>
+                <input id="fit-z" type="range" min="-8" max="8" step="0.1" value="0" />
+              </div>
+              <button id="reset-fit" class="button button-secondary reset-fit" type="button">Reset fit</button>
+            </fieldset>
+
+            <div class="privacy-note">
+              <span class="privacy-icon" aria-hidden="true"></span>
+              <p><strong>Processed on your device</strong><br />Your camera video stays on this device.</p>
+            </div>
+            <p class="attribution">BodyParts3D, © The Database Center for Life Science licensed under <a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html" target="_blank" rel="noopener noreferrer">CC Attribution 4.0 International</a>.</p>
+          </aside>
+        </div>
+      </main>
+
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
