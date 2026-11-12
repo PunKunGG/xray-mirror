@@ -1,5 +1,11 @@
 import type { FaceTrackingFrame, TrackedFace, TrackingDelegate } from './tracking/types.ts';
 
+// MediaPipe's face oval, ordered clockwise from the top of the forehead.
+const FACE_OVAL = [
+  10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377,
+  152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109,
+];
+
 interface PreviewLayer {
   resize(width: number, height: number, aspect: number, dpr: number): void;
   render(face: TrackedFace | null): void;
@@ -55,6 +61,7 @@ export function createPreview(
   let overlayMs: number | null = null;
   let delegate: TrackingDelegate | null = null;
   let debug = false;
+  let outline = false;
   let lastMetrics = -Infinity;
 
   function resize(): void {
@@ -91,11 +98,23 @@ export function createPreview(
       painted = current;
       overlayMs = current?.face ? Math.max(0, now - current.timestampMs) : null;
     }
-    if (debug && context) {
+    if ((debug || outline) && context) {
       const { width, height } = canvas;
       context.clearRect(0, 0, width, height);
-      if (current?.face) {
-        const { landmarks } = current.face;
+      const landmarks = current?.face?.landmarks;
+      if (landmarks && outline) {
+        context.beginPath();
+        for (const landmark of FACE_OVAL) {
+          const index = landmark * 3;
+          context.lineTo(landmarks[index] * width, landmarks[index + 1] * height);
+        }
+        context.closePath();
+        context.lineJoin = 'round';
+        context.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+        context.strokeStyle = '#66b8ff';
+        context.stroke();
+      }
+      if (landmarks && debug) {
         const radius = Math.max(1, 1.25 * (window.devicePixelRatio || 1));
         context.beginPath();
         context.fillStyle = '#7ee7ff';
@@ -146,8 +165,12 @@ export function createPreview(
     },
     setDebug(show: boolean) {
       debug = show;
-      canvas.hidden = !show;
+      canvas.hidden = !debug && !outline;
       if (show) metrics();
+    },
+    setOutline(show: boolean) {
+      outline = show;
+      canvas.hidden = !debug && !outline;
     },
     setDelegate(value: TrackingDelegate) {
       delegate = value;
