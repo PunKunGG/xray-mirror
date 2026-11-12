@@ -31,7 +31,7 @@
             <div id="stage" class="camera-stage">
               <div id="camera-image" class="camera-image" hidden>
                 <video id="camera-video" autoplay muted playsinline aria-label="Mirrored camera preview"></video>
-                <canvas id="skull-overlay" aria-hidden="true" hidden></canvas>
+                <canvas id="anatomy-overlay" aria-hidden="true" hidden></canvas>
                 <canvas id="tracking-overlay" aria-hidden="true" hidden></canvas>
               </div>
               <div id="camera-placeholder" class="camera-placeholder">
@@ -45,7 +45,7 @@
             </div>
           </section>
 
-          <aside class="control-panel" aria-label="Camera and fit controls">
+          <aside class="control-panel" aria-label="Camera and overlay controls">
             <div class="panel-heading">
               <h2>Camera</h2>
             </div>
@@ -78,9 +78,80 @@
 
             <div class="control-divider"></div>
 
-            <fieldset class="fit-controls">
+            <fieldset class="control-group">
+              <legend>Layers</legend>
+              <div class="layer-options">
+                <label><input id="layer-skull" type="checkbox" checked /><span>Skull</span></label>
+                <label><input id="layer-brain" type="checkbox" /><span>Brain</span></label>
+                <label><input id="layer-muscles" type="checkbox" /><span>Muscles</span></label>
+                <label><input id="layer-eyes" type="checkbox" /><span>Eyes</span></label>
+                <label><input id="layer-outline" type="checkbox" /><span>Head outline</span></label>
+              </div>
+              <div class="layer-presets" role="group" aria-labelledby="layer-presets-label">
+                <span id="layer-presets-label" class="layer-presets-label">Presets</span>
+                <div class="layer-presets-buttons">
+                  <button class="button layer-preset" type="button" data-layer-preset="skull" aria-pressed="true">Skull</button>
+                  <button class="button layer-preset" type="button" data-layer-preset="brain" aria-pressed="false">Brain</button>
+                  <button class="button layer-preset" type="button" data-layer-preset="muscles" aria-pressed="false">Muscles</button>
+                  <button class="button layer-preset" type="button" data-layer-preset="everything" aria-pressed="false">Everything</button>
+                </div>
+              </div>
+              <div id="anatomy-message" class="camera-message" role="status" aria-live="polite" hidden></div>
+            </fieldset>
+
+            <div class="control-divider"></div>
+
+            <fieldset class="control-group">
+              <legend>Look</legend>
+              <div class="look-options">
+                <label>
+                  <input id="look-xray" type="radio" name="skull-look" value="xray" checked />
+                  <span>X-ray</span>
+                </label>
+                <label>
+                  <input id="look-solid" type="radio" name="skull-look" value="solid" />
+                  <span>Solid</span>
+                </label>
+              </div>
+              <div class="brightness-control">
+                <div class="fit-control-heading">
+                  <label for="look-brightness">Brightness</label>
+                  <output id="look-brightness-value" for="look-brightness">100%</output>
+                </div>
+                <input id="look-brightness" type="range" min="0" max="200" step="1" value="100" aria-valuetext="100%" />
+              </div>
+            </fieldset>
+
+            <div class="control-divider"></div>
+
+            <fieldset class="control-group">
+              <legend>Mixed reality</legend>
+              <div class="reveal-control">
+                <label for="reveal-mode">Reveal</label>
+                <select id="reveal-mode">
+                  <option value="whole-head" selected>Whole head</option>
+                </select>
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading">
+                  <label for="reveal-real">Real me showing through</label>
+                  <output id="reveal-real-value" for="reveal-real">0%</output>
+                </div>
+                <input id="reveal-real" type="range" min="0" max="100" step="1" value="0" aria-valuetext="0%" />
+              </div>
+              <div class="fit-control">
+                <div class="fit-control-heading">
+                  <label for="reveal-feather">Edge feather</label>
+                  <output id="reveal-feather-value" for="reveal-feather">0 px</output>
+                </div>
+                <input id="reveal-feather" type="range" min="0" max="24" step="1" value="0" aria-valuetext="0 px" />
+              </div>
+            </fieldset>
+
+            <div class="control-divider"></div>
+
+            <fieldset class="control-group">
               <legend>Fit to my head</legend>
-              <div id="skull-message" class="camera-message" role="status" aria-live="polite" hidden></div>
               <div class="fit-control">
                 <div class="fit-control-heading"><label for="fit-size">Overall size</label><output id="fit-size-value" for="fit-size">1.00×</output></div>
                 <input id="fit-size" type="range" min="0.5" max="1.5" step="0.01" value="1" />
