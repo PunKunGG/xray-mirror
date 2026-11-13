@@ -5,8 +5,8 @@ export type TrackerRequest =
   | { type: 'frame'; bitmap: ImageBitmap; timestampMs: number }
   | { type: 'dispose' };
 
-export type TrackerReply =
+export type TrackerReply<Frame = FaceTrackingFrame> =
   | { type: 'ready'; delegate: TrackingDelegate }
-  | { type: 'frame'; result: FaceTrackingFrame }
+  | { type: 'frame'; result: Frame }
   | { type: 'error'; message: string }
   | { type: 'disposed' };

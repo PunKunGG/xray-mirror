@@ -20,3 +20,15 @@ test('the skull GLB exports once into Y-up, anterior-positive meter coordinates'
   assert.ok(bounds('Frontal bone').max[1] > 0.09, 'the forehead rises above the origin');
   assert.ok(bounds('Nasal bone left').min[2] > 0.08, 'the nasal bones face positive Z');
 });
+
+test('all shipped anatomy meshes require Draco compression', async () => {
+  const extension = 'KHR_draco_mesh_compression';
+  for (const layer of ['skull', 'brain', 'muscles', 'eyes']) {
+    const bytes = await readFile(new URL(`../public/models/${layer}.glb`, import.meta.url));
+    const document = JSON.parse(bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)));
+    assert.ok(document.extensionsRequired.includes(extension), layer);
+    for (const { primitives } of document.meshes) {
+      for (const { extensions } of primitives) assert.ok(extensions?.[extension], layer);
+    }
+  }
+});

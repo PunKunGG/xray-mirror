@@ -2,6 +2,7 @@ import {
   Camera, Mesh, NoBlending, PlaneGeometry, Scene, ShaderMaterial, Vector2, WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
+import type { Lens } from './hand-bones.ts';
 
 export function createHeadCompositor(renderer: WebGLRenderer) {
   const target = new WebGLRenderTarget(1, 1, { samples: 4, resolveDepthBuffer: false });
@@ -17,6 +18,10 @@ export function createHeadCompositor(renderer: WebGLRenderer) {
     uniforms: {
       anatomy: { value: target.texture },
       radius: { value: new Vector2() },
+      viewport: { value: viewportSize },
+      lensCenter: { value: new Vector2() },
+      lensRadius: { value: 0 },
+      lensEdge: { value: 1 },
       xray: { value: false },
     },
     vertexShader: `
@@ -30,6 +35,10 @@ export function createHeadCompositor(renderer: WebGLRenderer) {
     fragmentShader: `
       uniform sampler2D anatomy;
       uniform vec2 radius;
+      uniform vec2 viewport;
+      uniform vec2 lensCenter;
+      uniform float lensRadius;
+      uniform float lensEdge;
       uniform bool xray;
       varying vec2 screenUv;
 
@@ -65,7 +74,13 @@ export function createHeadCompositor(renderer: WebGLRenderer) {
         if (!xray) {
           layer.rgb = linearToOutputTexel(vec4(layer.rgb / layer.a, 1.0)).rgb * layer.a;
         }
-        gl_FragColor = layer * feather();
+        float reveal = 1.0;
+        if (lensRadius > 0.0) {
+          float distancePx = length((screenUv - lensCenter) * viewport);
+          reveal = 1.0 - smoothstep(max(0.0, lensRadius - lensEdge), lensRadius, distancePx);
+        }
+        float edge = radius.x > 0.0 ? feather() : 1.0;
+        gl_FragColor = layer * edge * reveal;
       }
     `,
   });
@@ -81,8 +96,8 @@ export function createHeadCompositor(renderer: WebGLRenderer) {
       renderer.getDrawingBufferSize(drawingSize);
       target.setSize(Math.max(1, drawingSize.x), Math.max(1, drawingSize.y));
     },
-    render(scene: Scene, camera: Camera, featherPx: number, xray: boolean): void {
-      if (featherPx === 0) {
+    render(scene: Scene, camera: Camera, featherPx: number, xray: boolean, lens: Lens | null): void {
+      if (featherPx === 0 && !lens) {
         renderer.render(scene, camera);
         return;
       }
@@ -95,6 +110,9 @@ export function createHeadCompositor(renderer: WebGLRenderer) {
       }
       material.uniforms.radius.value.set(featherPx / viewportSize.x, featherPx / viewportSize.y);
       material.uniforms.xray.value = xray;
+      material.uniforms.lensCenter.value.set(lens?.x ?? 0, 1 - (lens?.y ?? 0));
+      material.uniforms.lensRadius.value = lens ? Math.min(viewportSize.x, viewportSize.y) * lens.size / 2 : 0;
+      material.uniforms.lensEdge.value = Math.max(1, featherPx);
       renderer.render(pass, passCamera);
     },
     dispose(): void {
