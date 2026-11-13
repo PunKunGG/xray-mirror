@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
-import { FACE_MODEL_URL } from './src/tracking/model-url.ts';
+import { FACE_MODEL_URL, HAND_MODEL_URL } from './src/tracking/model-url.ts';
 
-const connections = `connect-src 'self' ${FACE_MODEL_URL}`;
+const connections = `connect-src 'self' ${FACE_MODEL_URL} ${HAND_MODEL_URL}`;
 
 export default defineConfig({
   worker: { format: 'es' },

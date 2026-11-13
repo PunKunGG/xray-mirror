@@ -27,7 +27,7 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 - FR-7: Three.js canvas aligned exactly with the video (no stretch on resize).
 - FR-8: Skull bound to head pose; follows rotation, tilt, and distance.
 - FR-9: Hand bones follow the 21 hand landmarks (fingers bend with the real hand).
-- FR-10: Layers with individual toggles: Skull, Brain, Muscles, Eyes, Head outline, Hand bones. Presets: Skull / Brain / Muscles / Everything.
+- FR-10: Layers have individual toggles for Skull, Brain, Muscles, Eyes, Head outline, and Hand bones. Layer presets select Skull, Brain, Muscles, Eyes, Hand bones, or Everything. Quick views apply layers, appearance, reveal, and labels together for Classic, Study, Hand lens, or Hands only. Fit and diagnostics remain independent of view selection.
 - FR-11: Look modes: X-ray (Fresnel + additive blending) and Solid. Brightness slider.
 - FR-11a: Head outline is a thin blue edge line around the face and jaw so the skull looks attached to the real head.
 

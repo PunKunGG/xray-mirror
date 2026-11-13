@@ -1,4 +1,8 @@
-import type { FaceTrackingFrame, TrackedFace, TrackingDelegate } from './tracking/types.ts';
+import { createHandBoneAppearance, drawHandBones, handLabelAnchors, palmCenter, type Lens } from './anatomy/hand-bones.ts';
+import type { LabelAnchor } from './anatomy/label-layout.ts';
+import { createLabelOverlay } from './anatomy/label-overlay.ts';
+import type { SkullLook } from './anatomy/xray-material.ts';
+import type { FaceTrackingFrame, HandTrackingFrame, TrackedFace, TrackedHand, TrackingDelegate } from './tracking/types.ts';
 
 // MediaPipe's face oval, ordered clockwise from the top of the forehead.
 const FACE_OVAL = [
@@ -8,7 +12,9 @@ const FACE_OVAL = [
 
 interface PreviewLayer {
   resize(width: number, height: number, aspect: number, dpr: number): void;
-  render(face: TrackedFace | null): void;
+  render(face: TrackedFace | null, lens: Lens | null): void;
+  getLabelAnchors(): readonly LabelAnchor[];
+  onHands(count: number): void;
 }
 
 interface PreviewMetrics {
@@ -49,10 +55,12 @@ export function createPreview(
   surface: HTMLElement,
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
+  labelCanvas: HTMLCanvasElement,
   onMetrics: (metrics: PreviewMetrics) => void,
   layer: PreviewLayer,
 ) {
   const context = canvas.getContext('2d');
+  const labels = createLabelOverlay(labelCanvas);
   const renderRate = new FrameRate();
   const trackingRate = new FrameRate();
   let renderId: number | undefined;
@@ -62,7 +70,33 @@ export function createPreview(
   let delegate: TrackingDelegate | null = null;
   let debug = false;
   let outline = false;
+  let handBones = false;
+  let handAppearance = createHandBoneAppearance('xray', 1);
+  let lensSize = 0;
+  let latestHands: HandTrackingFrame | null = null;
+  let handCount = 0;
+  let lensHand: TrackedHand | undefined;
+  let lens: Lens | null = null;
+  let paintedFace: TrackedFace | null = null;
+  let paintedHands: HandTrackingFrame | null = null;
+  let canvasDirty = true;
   let lastMetrics = -Infinity;
+
+  function updateLens(hands: readonly TrackedHand[]): void {
+    // Keep following the same hand if the detector changes its result order.
+    const hand = lensSize > 0
+      ? hands.find(({ id }) => id === lensHand?.id) ?? hands[0]
+      : undefined;
+    if (hand === lensHand && (lens?.size ?? 0) === (hand ? lensSize : 0)) return;
+    lensHand = hand;
+    lens = hand ? { ...palmCenter(hand.landmarks), size: lensSize } : null;
+    canvasDirty = true;
+  }
+
+  function updateCanvasVisibility(): void {
+    canvas.hidden = !debug && !outline && !handBones && lensSize === 0;
+    canvasDirty = true;
+  }
 
   function resize(): void {
     if (!video.videoWidth || !video.videoHeight) return;
@@ -74,7 +108,9 @@ export function createPreview(
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.max(1, Math.round(width * dpr));
     canvas.height = Math.max(1, Math.round(height * dpr));
+    canvasDirty = true;
     layer.resize(width, height, video.videoWidth / video.videoHeight, dpr);
+    labels.resize(stage.clientWidth, stage.clientHeight, width, height, dpr);
   }
 
   const resizeObserver = new ResizeObserver(resize);
@@ -93,15 +129,45 @@ export function createPreview(
     renderId = requestAnimationFrame(render);
     renderRate.add(now);
     const current = latest && now - latest.timestampMs < 500 ? latest : null;
-    layer.render(current?.face ?? null);
+    const handsFrame = latestHands && now - latestHands.timestampMs < 500 ? latestHands : null;
+    const hands = handsFrame?.hands ?? [];
+    if (hands.length !== handCount) {
+      handCount = hands.length;
+      layer.onHands(handCount);
+    }
+    updateLens(hands);
+    const face = current?.face ?? null;
+    layer.render(face, lens);
+    if (!labelCanvas.hidden) {
+      const handAnchors = handBones && handAppearance.opacity > 0 ? handLabelAnchors(hands) : [];
+      // Use the nose tip when head labels are visible, otherwise center on the hands.
+      const headAnchors = layer.getLabelAnchors();
+      const centerX = face && headAnchors.length ? face.landmarks[3]
+        : handAnchors.length ? hands.reduce((sum, hand) => sum + palmCenter(hand.landmarks).x, 0) / hands.length
+          : 0.5;
+      labels.render(headAnchors, handAnchors, centerX, lens);
+    }
     if (current !== painted) {
       painted = current;
       overlayMs = current?.face ? Math.max(0, now - current.timestampMs) : null;
     }
-    if ((debug || outline) && context) {
+    if (context && !canvas.hidden && (canvasDirty || paintedFace !== face || paintedHands !== handsFrame)) {
+      canvasDirty = false;
+      paintedFace = face;
+      paintedHands = handsFrame;
       const { width, height } = canvas;
+      const dpr = window.devicePixelRatio || 1;
       context.clearRect(0, 0, width, height);
-      const landmarks = current?.face?.landmarks;
+      const landmarks = face?.landmarks;
+      if (lens) {
+        context.save();
+        context.beginPath();
+        context.arc(lens.x * width, lens.y * height, lens.size * Math.min(width, height) / 2, 0, 2 * Math.PI);
+        context.strokeStyle = '#8bdbf6';
+        context.lineWidth = 1.5 * dpr;
+        context.stroke();
+        context.clip();
+      }
       if (landmarks && outline) {
         context.beginPath();
         for (const landmark of FACE_OVAL) {
@@ -110,19 +176,27 @@ export function createPreview(
         }
         context.closePath();
         context.lineJoin = 'round';
-        context.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+        context.lineWidth = 1.5 * dpr;
         context.strokeStyle = '#66b8ff';
         context.stroke();
       }
-      if (landmarks && debug) {
-        const radius = Math.max(1, 1.25 * (window.devicePixelRatio || 1));
+      if (lens) context.restore();
+      if (handBones) {
+        for (const hand of hands) drawHandBones(context, hand.landmarks, handAppearance);
+      }
+      if (debug) {
+        const radius = Math.max(1, 1.25 * dpr);
         context.beginPath();
         context.fillStyle = '#7ee7ff';
-        for (let index = 0; index < landmarks.length; index += 3) {
-          const x = landmarks[index] * width;
-          const y = landmarks[index + 1] * height;
-          context.moveTo(x + radius, y);
-          context.arc(x, y, radius, 0, 2 * Math.PI);
+        const points = hands.map((hand) => hand.landmarks);
+        if (landmarks) points.push(landmarks);
+        for (const coordinates of points) {
+          for (let index = 0; index < coordinates.length; index += 3) {
+            const x = coordinates[index] * width;
+            const y = coordinates[index + 1] * height;
+            context.moveTo(x + radius, y);
+            context.arc(x, y, radius, 0, 2 * Math.PI);
+          }
         }
         context.fill();
       }
@@ -139,7 +213,7 @@ export function createPreview(
     delegate = null;
     overlayMs = null;
     trackingRate.reset();
-    layer.render(null);
+    layer.render(null, null);
     metrics();
   }
 
@@ -162,15 +236,39 @@ export function createPreview(
       lastMetrics = -Infinity;
       resetTracking();
       context?.clearRect(0, 0, canvas.width, canvas.height);
+      labels.clear();
     },
     setDebug(show: boolean) {
       debug = show;
-      canvas.hidden = !debug && !outline;
+      updateCanvasVisibility();
       if (show) metrics();
     },
     setOutline(show: boolean) {
       outline = show;
-      canvas.hidden = !debug && !outline;
+      updateCanvasVisibility();
+    },
+    setHandBones(show: boolean) {
+      handBones = show;
+      updateCanvasVisibility();
+    },
+    setAppearance(look: SkullLook, brightness: number) {
+      handAppearance = createHandBoneAppearance(look, brightness);
+      canvasDirty = true;
+    },
+    setLabels(show: boolean) {
+      labelCanvas.hidden = !show;
+      if (!show) labels.clear();
+    },
+    setLens(size: number) {
+      lensSize = size;
+      updateCanvasVisibility();
+    },
+    acceptHands(frame: HandTrackingFrame | null) {
+      latestHands = frame;
+      if (!frame) {
+        handCount = 0;
+        updateLens([]);
+      }
     },
     setDelegate(value: TrackingDelegate) {
       delegate = value;
