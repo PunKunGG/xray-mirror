@@ -71,7 +71,9 @@ After Blender export, compress each of the four GLBs with glTF Transform 4.5.1. 
 npm exec --yes --package=@gltf-transform/cli@4.5.1 -- gltf-transform draco input.glb output.glb --method edgebreaker --quantize-position 16 --quantize-normal 12
 ```
 
-Compression preserves the mesh names, triangle counts and materials and reduces the four files from 12.64 MB to 2.69 MB total. The Draco decoder comes from the installed Three.js package. [Draco license](public/licenses/draco.txt)
+Compression preserves the mesh names, triangle counts and materials and reduces the four files from 12.64 MB to 2.69 MB total. The Draco decoder comes from the installed Three.js package.
+
+The browser build includes the license texts for [Three.js](public/licenses/three.txt), [MediaPipe Tasks Vision](public/licenses/mediapipe-tasks-vision.txt), and [Draco](public/licenses/draco.txt) at `/licenses/`.
 
 ## Verify camera privacy
 
