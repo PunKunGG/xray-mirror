@@ -53,6 +53,14 @@ npm run preview
 
 Open `http://localhost:4173` to test the production bundle. The app requires HTTPS or a loopback origin for the camera. Initial tracking setup requires access to the Google-hosted model.
 
+## Anatomy Lab prototype
+
+Choose **Explore Anatomy Lab** from the mirror to open **Finger Joints**. In **Example**, switch the reference hand between **Straight** and **Bent** or choose **Use camera** to try the movement with either hand. Hold each requested pose briefly, select **Continue**, then answer which joint moved. The highlighted bones straddle the middle joint of the index finger. [Hand bones reference](https://openstax.org/books/anatomy-and-physiology-2e/pages/8-2-bones-of-the-upper-limb)
+
+If tracking loses your hand, bring one full hand back into view and repeat the current movement or switch to **Example** to continue. Returning to Example or the mirror releases the camera. The lesson starts fresh when reopened, and your mirror settings remain saved.
+
+Choose **Maxilla & Mandible** to see the same reference skull in three views in **Example**, or turn your head in **Use camera**. The lesson highlights each jaw in turn and asks you to identify both structures. The live view uses your saved head fit. Switching lessons stops the current camera and opens the new lesson in Example. [Skull anatomy reference](https://openstax.org/books/anatomy-and-physiology-2e/pages/7-2-the-skull)
+
 For shader tuning, open the dev server with `?tune` in the URL and start the camera. The lil-gui panel exposes the rim power, rim strength, and surface glow.
 
 ## Assets

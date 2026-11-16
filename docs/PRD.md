@@ -91,3 +91,11 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 | 6 | Hand tracking + hand bones + X-ray lens that follows the hand |
 | 7 | Labels (two columns, no overlap) |
 | 8 | Polish, disclaimer + license attribution, model compression, deploy |
+
+## V2 prototype · Anatomy Lab
+
+- The Mirror remains the home view. Anatomy Lab opens the English **Finger Joints** lesson in Example mode. Users can complete the same three steps in Example or with hand tracking by straightening, bending, and identifying the middle joint of the index finger.
+- Highlight the joint and adjacent bones with written guidance. If a pose cannot be detected, preserve completed steps and let the user restart the current movement or switch to Example.
+- The **Maxilla & Mandible** lesson highlights the paired upper jaw bones and the lower jaw on the reference skull and asks the learner to identify both. Users can select a front or side view in Example or turn their head in the live view.
+- Lab settings and progress live in memory. Camera access is explicit and stops when leaving the live lesson. The lab preserves saved Mirror preferences and uses no new models or dependencies.
+- Before releasing V2, test with a physical camera in Chrome on Windows and Android. Give three beginners the lesson without instructions. The target is at least two finishing within two minutes and explaining that the PIP joint connects the proximal and middle phalanges.

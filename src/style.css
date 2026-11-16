@@ -769,6 +769,231 @@ h1 {
   text-underline-offset: 2px;
 }
 
+.lab-entry {
+  margin-top: 20px;
+}
+
+.lab-back {
+  padding: 4px 0;
+  border: 0;
+  color: var(--link);
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lab-lesson-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.lab-lesson-selector .button {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
+.jaw-surface[data-input="example"] {
+  transform: translate(-50%, -50%);
+}
+
+.jaw-turn-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.jaw-turn-controls .button {
+  min-height: 44px;
+}
+
+.lab-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 34px 0 28px;
+}
+
+.lab-eyebrow {
+  margin: 0 0 10px;
+  color: var(--brand-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lab-modes,
+.lab-pose-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lab-modes {
+  flex: none;
+  width: min(100%, 238px);
+}
+
+.lab-modes .button,
+.lab-pose-controls .button {
+  min-height: 44px;
+}
+
+.lab-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  align-items: start;
+  gap: 18px;
+}
+
+.lab-viewer,
+.lab-lesson {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.lab-stage {
+  min-height: 350px;
+  aspect-ratio: 16 / 10;
+}
+
+.lab-example {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+}
+
+.lab-viewer-footer {
+  padding: 14px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lab-viewer-footer p {
+  margin: 0;
+}
+
+.lab-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+  padding: 20px 20px 17px;
+  border-bottom: 1px solid var(--divider);
+  list-style: none;
+}
+
+.lab-steps li {
+  padding: 8px 3px;
+  border-bottom: 2px solid var(--divider);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.lab-steps li[aria-current="step"] {
+  border-color: var(--brand-accent);
+  color: var(--text);
+}
+
+.lab-lesson-content {
+  padding: 26px 24px;
+}
+
+.lab-lesson h2 {
+  margin-bottom: 12px;
+  font-size: 23px;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.lab-heading h1:focus-visible,
+.lab-lesson h2:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.lab-lesson-content p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.lab-pose-controls {
+  margin-top: 24px;
+}
+
+.lab-motion-status,
+.lab-quiz-feedback {
+  min-height: 1.5em;
+  margin: 16px 0 0;
+}
+
+.lab-quiz-feedback:empty {
+  min-height: 0;
+  margin: 0;
+}
+
+.lab-action {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.lab-quiz fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lab-quiz legend {
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lab-quiz label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--button-border);
+  border-radius: 7px;
+  color: var(--text-soft);
+  background: var(--button);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.lab-quiz label:has(input:checked) {
+  border-color: var(--selected-border);
+  color: var(--selected-text);
+  background: var(--selected);
+}
+
+.lab-quiz input {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 @media (max-width: 900px) {
   .workspace-grid {
     grid-template-columns: minmax(0, 1fr) 270px;
@@ -802,6 +1027,29 @@ h1 {
 
   .camera-stage {
     min-height: 240px;
+  }
+
+  .lab-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 20px;
+    margin: 20px 0;
+  }
+
+  .anatomy-lab {
+    padding-top: 26px;
+  }
+
+  .lab-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lab-stage {
+    min-height: 240px;
+  }
+
+  .lab-lesson-content {
+    padding: 20px 18px;
   }
 }
 

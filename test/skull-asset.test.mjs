@@ -16,7 +16,12 @@ test('the skull GLB exports once into Y-up, anterior-positive meter coordinates'
     return document.accessors[primitive.attributes.POSITION];
   }
 
-  assert.ok(bounds('Mandible').min[1] < -0.09, 'the jaw is below the origin');
+  const mandible = bounds('Mandible');
+  assert.ok(mandible.min[1] < -0.09, 'the jaw is below the origin');
+  const leftMaxilla = bounds('Maxilla left');
+  const rightMaxilla = bounds('Maxilla right');
+  assert.ok(leftMaxilla.max[1] > mandible.max[1] && rightMaxilla.max[1] > mandible.max[1], 'the paired maxillae are above the mandible');
+  assert.ok(leftMaxilla.max[0] > 0.03 && rightMaxilla.min[0] < -0.03, 'the upper jaw includes both sides');
   assert.ok(bounds('Frontal bone').max[1] > 0.09, 'the forehead rises above the origin');
   assert.ok(bounds('Nasal bone left').min[2] > 0.08, 'the nasal bones face positive Z');
 });
