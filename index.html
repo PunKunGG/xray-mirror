@@ -1,11 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b121a" />
-    <title>X-Ray Mirror</title>
+    <meta name="description" content="Explore 3D anatomy of the head and hands with X-Ray Mirror, a live webcam demo. Camera video is processed on your device." />
+    <title>X-Ray Mirror | Interactive 3D Anatomy Demo</title>
     <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/theme.ts"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -14,12 +16,24 @@
           <span class="brand-mark" aria-hidden="true"><span></span></span>
           <span>X-Ray Mirror</span>
         </a>
-        <span class="header-note">Face tracking</span>
+        <fieldset class="theme-options" aria-label="Theme">
+          <label>
+            <input type="radio" name="theme" value="light" />
+            <span>Light</span>
+          </label>
+          <label>
+            <input type="radio" name="theme" value="dark" checked />
+            <span>Dark</span>
+          </label>
+        </fieldset>
       </header>
 
       <main class="workspace">
         <div class="page-heading">
-          <h1>Your mirror</h1>
+          <div>
+            <h1>Your mirror</h1>
+            <p class="page-description">Explore 3D anatomy of the head and hands with a live camera mirror.</p>
+          </div>
           <div class="status-indicator">
             <span class="status-dot" aria-hidden="true"></span>
             <span id="camera-status" role="status" aria-live="polite">Camera is off</span>
