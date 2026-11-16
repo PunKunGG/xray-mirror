@@ -244,6 +244,7 @@ export function drawHandBones(
   context: CanvasRenderingContext2D,
   landmarks: Float32Array,
   appearance: HandBoneAppearance,
+  highlightJoint?: number,
 ): void {
   if (appearance.opacity === 0) return;
   const { width, height } = context.canvas;
@@ -258,10 +259,13 @@ export function drawHandBones(
 
   context.save();
   context.lineJoin = 'round';
-  context.globalAlpha = appearance.opacity;
+  const jointOffset = highlightJoint === undefined ? undefined : highlightJoint * 3;
+  const contextOpacity = appearance.opacity * (jointOffset === undefined ? 1 : 0.55);
+  context.globalAlpha = contextOpacity;
   context.strokeStyle = appearance.stroke;
   if (palm.hasArea) drawWristBones(context, palm, width, height, Math.max(0.75, thickness * 0.24), appearance);
   for (const bone of bones) {
+    const highlighted = bone.start === jointOffset || bone.end === jointOffset;
     const base = bone.palmBase === undefined ? undefined : metacarpalBase(palm, bone.palmBase);
     const x = (base?.x ?? landmarks[bone.start]) * width;
     const y = (base?.y ?? landmarks[bone.start + 1]) * height;
@@ -283,8 +287,21 @@ export function drawHandBones(
     context.quadraticCurveTo(x - ny * 0.6, y + nx * 0.6, x + nx, y + ny);
     context.closePath();
     context.lineWidth = Math.max(0.75, halfWidth * 0.24);
-    context.fillStyle = boneFill(context, appearance, cx, cy, nx, ny);
+    context.globalAlpha = highlighted ? 1 : contextOpacity;
+    context.fillStyle = highlighted ? '#fff0a0' : boneFill(context, appearance, cx, cy, nx, ny);
+    context.strokeStyle = highlighted ? '#172530' : appearance.stroke;
     context.fill();
+    context.stroke();
+  }
+  if (jointOffset !== undefined) {
+    context.beginPath();
+    context.arc(landmarks[jointOffset] * width, landmarks[jointOffset + 1] * height, Math.max(thickness * 1.6, width * 0.009), 0, 2 * Math.PI);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#15222b';
+    context.lineWidth = Math.max(2, thickness * 0.9);
+    context.stroke();
+    context.strokeStyle = '#fff0a0';
+    context.lineWidth *= 0.45;
     context.stroke();
   }
   context.restore();

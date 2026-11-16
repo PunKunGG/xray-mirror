@@ -49,3 +49,9 @@ The anatomy GLBs use Draco compression. Three.js loads its decoder from the app 
 ## View preferences
 
 The page stores the current overlay controls in a versioned localStorage key alongside separate fit and theme preferences. It validates the saved settings and applies them through the Quick view path during startup. Preset buttons show matches for the restored controls. Camera sessions and tracking data stay in memory.
+
+## V2 Anatomy Lab
+
+The Mirror and Lab take turns owning the camera. The Lab reuses the webcam helper, Hand Landmarker worker and 2D hand renderer. The model estimates the index joint angle from three landmarks in video proportions. Tracking retains one hand ID while visible and requires a new steady pose after a change or tracking loss. The Example view renders two authored landmark poses locally without loading the hand model. The lesson state and quiz results stay in memory.
+
+The jaw lesson reuses the skull GLB and its Solid renderer, with a highlight limited to the named maxilla or mandible meshes. Example renders reference poses without opening the camera. The live view uses the Face Landmarker and saved head fit. Switching lessons releases the current camera session and starts the selected lesson in Example.

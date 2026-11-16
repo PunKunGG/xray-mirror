@@ -38,11 +38,12 @@
         </fieldset>
       </header>
 
-      <main class="workspace">
+      <main id="mirror-workspace" class="workspace">
         <div class="page-heading">
           <div>
             <h1>Your mirror</h1>
             <p class="page-description">Explore 3D anatomy of the head and hands with a live camera mirror.</p>
+            <button id="open-lab" class="button button-secondary lab-entry" type="button">Explore Anatomy Lab</button>
           </div>
           <div class="status-indicator">
             <span class="status-dot" aria-hidden="true"></span>
@@ -245,6 +246,136 @@
             </details>
           </aside>
         </div>
+      </main>
+
+      <main id="anatomy-lab" class="workspace anatomy-lab" hidden>
+        <button id="close-lab" class="lab-back" type="button">← Back to mirror</button>
+
+        <div class="lab-lesson-selector" role="group" aria-label="Choose a lesson">
+          <button id="lab-select-finger" class="button layer-preset" type="button" aria-pressed="true">Finger Joints</button>
+          <button id="lab-select-jaw" class="button layer-preset" type="button" aria-pressed="false">Maxilla &amp; Mandible</button>
+        </div>
+
+        <section id="finger-lesson" aria-labelledby="lab-title">
+        <div class="lab-heading">
+          <div>
+            <p class="lab-eyebrow">Anatomy Lab</p>
+            <h1 id="lab-title" tabindex="-1">Finger Joints</h1>
+            <p class="page-description">Explore how a finger bends, then test what you have learned.</p>
+          </div>
+          <div class="lab-modes" role="group" aria-label="Choose how to explore">
+            <button id="lab-use-example" class="button layer-preset" type="button" aria-pressed="true">Example</button>
+            <button id="lab-use-camera" class="button layer-preset" type="button" aria-pressed="false">Use camera</button>
+          </div>
+        </div>
+
+        <div class="lab-layout">
+          <section class="lab-viewer" aria-label="Finger joint demonstration">
+            <div id="lab-stage" class="camera-stage lab-stage">
+              <canvas id="lab-example" class="lab-example" aria-label="Reference hand illustration"></canvas>
+              <div id="lab-live" class="camera-image" hidden>
+                <video id="lab-video" autoplay muted playsinline aria-label="Mirrored camera preview"></video>
+                <canvas id="lab-overlay" aria-hidden="true"></canvas>
+              </div>
+              <div id="lab-camera-placeholder" class="camera-placeholder" hidden>
+                <div class="camera-icon" aria-hidden="true"><span></span></div>
+                <p>Show your hand to the camera.</p>
+              </div>
+            </div>
+            <div class="lab-viewer-footer">
+              <p id="lab-camera-status" role="status" aria-live="polite">Example hand. Your camera is off.</p>
+            </div>
+          </section>
+
+          <section class="lab-lesson" aria-labelledby="lab-step-title">
+            <ol id="lab-steps" class="lab-steps" aria-label="Lesson progress">
+              <li data-lab-step="straighten">Straighten</li>
+              <li data-lab-step="bend">Bend</li>
+              <li data-lab-step="quiz">Question</li>
+            </ol>
+            <div class="lab-lesson-content">
+              <h2 id="lab-step-title" tabindex="-1">Straighten your index finger</h2>
+              <p id="lab-step-description">Select the straight example to see the bones of the index finger.</p>
+
+              <div id="lab-pose-controls" class="lab-pose-controls" role="group" aria-label="Example hand pose">
+                <button id="lab-straight" class="button layer-preset" type="button" aria-pressed="true">Straight</button>
+                <button id="lab-bent" class="button layer-preset" type="button" aria-pressed="false">Bent</button>
+              </div>
+              <p id="lab-motion-status" class="lab-motion-status" role="status" aria-live="polite"></p>
+              <button id="lab-next" class="button button-primary lab-action" type="button">Continue</button>
+
+              <form id="lab-quiz" class="lab-quiz" hidden>
+                <fieldset>
+                  <legend>Which joint did you bend?</legend>
+                  <label><input type="radio" name="lab-answer" value="base" /><span>Joint at the base of the finger</span></label>
+                  <label><input type="radio" name="lab-answer" value="middle" /><span>Middle joint of the finger</span></label>
+                  <label><input type="radio" name="lab-answer" value="tip" /><span>Joint nearest the fingertip</span></label>
+                </fieldset>
+                <button class="button button-primary lab-action" type="submit">Check answer</button>
+              </form>
+              <p id="lab-quiz-feedback" class="lab-quiz-feedback" role="status" aria-live="polite"></p>
+              <button id="lab-restart" class="button button-secondary lab-action" type="button" hidden>Start over</button>
+            </div>
+          </section>
+        </div>
+        </section>
+
+        <section id="jaw-lesson" aria-labelledby="jaw-title" hidden>
+          <div class="lab-heading">
+            <div>
+              <p class="lab-eyebrow">Anatomy Lab</p>
+              <h1 id="jaw-title" tabindex="-1">Maxilla &amp; Mandible</h1>
+              <p class="page-description">Explore the upper and lower jaw, then test what you have learned.</p>
+            </div>
+            <div class="lab-modes" role="group" aria-label="Choose how to explore the jaw">
+              <button id="jaw-use-example" class="button layer-preset" type="button" aria-pressed="true">Example</button>
+              <button id="jaw-use-camera" class="button layer-preset" type="button" aria-pressed="false">Use camera</button>
+            </div>
+          </div>
+
+          <div class="lab-layout">
+            <section class="lab-viewer" aria-label="Jaw anatomy demonstration">
+              <div id="jaw-stage" class="camera-stage lab-stage">
+                <div id="jaw-surface" class="camera-image jaw-surface" data-input="example">
+                  <video id="jaw-video" autoplay muted playsinline aria-label="Mirrored camera preview" hidden></video>
+                  <canvas id="jaw-overlay" aria-label="Reference skull model"></canvas>
+                </div>
+              </div>
+              <div class="lab-viewer-footer">
+                <p id="jaw-status" role="status" aria-live="polite">Example skull. Your camera is off.</p>
+                <div id="jaw-turn-controls" class="jaw-turn-controls" role="group" aria-label="Rotate the example skull">
+                  <button class="button layer-preset" type="button" data-jaw-angle="left" aria-pressed="false">Left</button>
+                  <button class="button layer-preset" type="button" data-jaw-angle="front" aria-pressed="true">Front</button>
+                  <button class="button layer-preset" type="button" data-jaw-angle="right" aria-pressed="false">Right</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="lab-lesson" aria-labelledby="jaw-step-title">
+              <ol id="jaw-steps" class="lab-steps" aria-label="Lesson progress">
+                <li data-jaw-step="upper">Upper jaw</li>
+                <li data-jaw-step="lower">Lower jaw</li>
+                <li data-jaw-step="quiz">Questions</li>
+              </ol>
+              <div class="lab-lesson-content">
+                <h2 id="jaw-step-title" tabindex="-1">Explore the upper jaw</h2>
+                <p id="jaw-description">Find the maxilla above the mouth on the reference skull.</p>
+                <button id="jaw-next" class="button button-primary lab-action" type="button">Continue</button>
+
+                <form id="jaw-quiz" class="lab-quiz" hidden>
+                  <fieldset>
+                    <legend id="jaw-question">Which bone is highlighted?</legend>
+                    <label><input type="radio" name="jaw-answer" value="maxilla" /><span>Maxilla</span></label>
+                    <label><input type="radio" name="jaw-answer" value="mandible" /><span>Mandible</span></label>
+                  </fieldset>
+                  <button class="button button-primary lab-action" type="submit">Check answer</button>
+                </form>
+                <p id="jaw-feedback" class="lab-quiz-feedback" role="status" aria-live="polite"></p>
+                <button id="jaw-restart" class="button button-secondary lab-action" type="button" hidden>Start over</button>
+              </div>
+            </section>
+          </div>
+        </section>
       </main>
 
     </div>

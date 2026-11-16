@@ -5,6 +5,8 @@ import { readOverlaySettings, saveOverlaySettings } from './anatomy/overlay-sett
 import { VIEWS, type ViewSettings } from './anatomy/views.ts';
 import type { SkullLook } from './anatomy/xray-material.ts';
 import { explainCameraError, requestCamera, stopCameraTracks } from './camera.ts';
+import { createAnatomyLab } from './lab/anatomy-lab.ts';
+import { createJawLesson } from './lab/jaw-lesson.ts';
 import { createPreview } from './preview.ts';
 import { startFaceTracker } from './tracking/face-tracker.ts';
 import { startHandTracker } from './tracking/hand-tracker.ts';
@@ -61,6 +63,14 @@ const fitControls = FIT_KEYS.map((key) => ({
 const layerControls = ANATOMY_LAYERS.map((key) => ({ key, checkbox: element<HTMLInputElement>(`layer-${key}`) }));
 const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('button[data-layer-preset]')];
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('button[data-view-preset]')];
+const mirrorWorkspace = element('mirror-workspace');
+const labWorkspace = element('anatomy-lab');
+const openLabButton = element<HTMLButtonElement>('open-lab');
+const labLessons = {
+  finger: { section: element('finger-lesson'), button: element('lab-select-finger') },
+  jaw: { section: element('jaw-lesson'), button: element('lab-select-jaw') },
+};
+type LabLesson = keyof typeof labLessons;
 
 interface CameraSession {
   stream?: MediaStream;
@@ -77,6 +87,9 @@ let selectedLayers = new Set<AnatomyLayer>(VIEWS.classic.layers);
 let fit = readFit();
 let handsState: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
 let handCount = 0;
+let fingerLesson: ReturnType<typeof createAnatomyLab> | undefined;
+let jawLesson: ReturnType<typeof createJawLesson> | undefined;
+let activeLesson: LabLesson | undefined;
 
 function setMessage(text = ''): void {
   if (message.textContent !== text) message.textContent = text;
@@ -398,6 +411,43 @@ async function start(): Promise<void> {
 
 startButton.addEventListener('click', () => void start());
 stopButton.addEventListener('click', () => stop());
+
+function currentLesson() {
+  return activeLesson === 'jaw' ? jawLesson : activeLesson === 'finger' ? fingerLesson : undefined;
+}
+
+function selectLesson(lesson: LabLesson): void {
+  if (activeLesson === lesson) return;
+  currentLesson()?.close();
+  activeLesson = lesson;
+  for (const [key, { section, button }] of Object.entries(labLessons)) {
+    section.hidden = key !== lesson;
+    button.setAttribute('aria-pressed', String(key === lesson));
+  }
+  if (lesson === 'jaw') {
+    jawLesson ??= createJawLesson(labLessons.jaw.section);
+    jawLesson.open();
+  } else {
+    fingerLesson ??= createAnatomyLab(labLessons.finger.section);
+    fingerLesson.open();
+  }
+}
+
+openLabButton.addEventListener('click', () => {
+  stop();
+  mirrorWorkspace.hidden = true;
+  labWorkspace.hidden = false;
+  selectLesson('finger');
+});
+labLessons.finger.button.addEventListener('click', () => selectLesson('finger'));
+labLessons.jaw.button.addEventListener('click', () => selectLesson('jaw'));
+element('close-lab').addEventListener('click', () => {
+  currentLesson()?.close();
+  activeLesson = undefined;
+  labWorkspace.hidden = true;
+  mirrorWorkspace.hidden = false;
+  openLabButton.focus();
+});
 retryTracking.addEventListener('click', () => {
   if (session?.stream) startTracking(session);
 });
@@ -461,6 +511,8 @@ element('reset-fit').addEventListener('click', () => {
 });
 
 function dispose(): void {
+  fingerLesson?.close();
+  jawLesson?.dispose();
   stop();
   anatomy?.dispose();
   anatomy = undefined;
@@ -468,6 +520,9 @@ function dispose(): void {
 }
 
 window.addEventListener('pagehide', dispose);
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && !labWorkspace.hidden) currentLesson()?.resumeLayout();
+});
 if (import.meta.hot) import.meta.hot.dispose(dispose);
 
 const savedSettings = readOverlaySettings();

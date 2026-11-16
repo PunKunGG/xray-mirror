@@ -93,6 +93,7 @@ interface ModelSlot {
   name: ModelLayer;
   xray: ShaderMaterial;
   solid: Map<Mesh, Material | Material[]>;
+  focusMaterials: Map<Mesh, Material | Material[]>;
   labels: ModelLabel[];
   selected: boolean;
   pending: boolean;
@@ -105,6 +106,8 @@ export interface AnatomyOverlay {
   resize(width: number, height: number, aspect: number, dpr: number): void;
   setFit(fit: HeadFit): void;
   setAppearance(look: SkullLook, brightness: number): void;
+  setSkullFocus(part: 'Maxilla' | 'Mandible' | null): void;
+  getLayerState(layer: ModelLayer): 'idle' | 'loading' | 'ready' | 'error';
   setReveal(realMe: number, featherPx: number): void;
   render(face: TrackedFace | null, lens: Lens | null): void;
   getLabelAnchors(): LabelAnchor[];
@@ -129,6 +132,7 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       name,
       xray: createXRayMaterial(bodyColor, rimColor),
       solid: new Map(),
+      focusMaterials: new Map(),
       labels: [],
       selected: false,
       pending: false,
@@ -148,6 +152,7 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
   let loader = new GLTFLoader().setDRACOLoader(decoder);
   let decoderFailed = false;
   let look: SkullLook = 'xray';
+  let skullFocus: 'Maxilla' | 'Mandible' | null = null;
   let realMe = 0;
   let featherPx = 0;
   let faceDrawn: TrackedFace | null = null;
@@ -181,7 +186,36 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
   }
 
   function applyMaterial(slot: ModelSlot, mode: SkullLook): void {
-    for (const [mesh, solid] of slot.solid) mesh.material = mode === 'xray' ? slot.xray : solid;
+    for (const [mesh, solid] of slot.solid) {
+      mesh.material = mode === 'xray' ? slot.xray : (slot.focusMaterials.get(mesh) ?? solid);
+    }
+  }
+
+  function applySkullFocus(): void {
+    const slot = slots.find(({ name }) => name === 'skull')!;
+    for (const [mesh, original] of slot.solid) {
+      const originalName = mesh.userData.name as string;
+      const focused = skullFocus === 'Maxilla'
+        ? originalName === 'Maxilla left' || originalName === 'Maxilla right'
+        : skullFocus === 'Mandible' && originalName === 'Mandible';
+      if (!focused) {
+        const previous = slot.focusMaterials.get(mesh);
+        if (previous) disposeMaterials(previous);
+        slot.focusMaterials.delete(mesh);
+        continue;
+      }
+      if (!slot.focusMaterials.has(mesh)) {
+        const makeHighlight = (material: Material): Material => {
+          const highlight = material.clone();
+          const color = (highlight as Material & { color?: { set(value: number): void } }).color;
+          color?.set(0xffb547);
+          return highlight;
+        };
+        slot.focusMaterials.set(mesh, Array.isArray(original) ? original.map(makeHighlight) : makeHighlight(original));
+      }
+    }
+    if (look === 'solid') applyMaterial(slot, look);
+    invalidate();
   }
 
   function reportStatus(): void {
@@ -231,6 +265,7 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       model.visible = slot.selected;
       slot.model = model;
       adjustment.add(model);
+      if (slot.name === 'skull' && skullFocus !== null) applySkullFocus();
       invalidate();
     } catch (error) {
       if (abort.signal.aborted) return;
@@ -285,6 +320,17 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       key.intensity = 2.1 * brightness;
       dirty = true;
     },
+    setSkullFocus(part) {
+      if (skullFocus === part) return;
+      skullFocus = part;
+      applySkullFocus();
+    },
+    getLayerState(layer) {
+      const slot = slots.find(({ name }) => name === layer)!;
+      if (slot.pending) return 'loading';
+      if (slot.failed) return 'error';
+      return slot.model ? 'ready' : 'idle';
+    },
     setReveal(real, feather) {
       realMe = real;
       featherPx = feather;
@@ -328,7 +374,9 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       decoder.dispose();
       for (const slot of slots) {
         if (slot.model) {
-          applyMaterial(slot, 'solid');
+          for (const [mesh, original] of slot.solid) mesh.material = original;
+          for (const focused of slot.focusMaterials.values()) disposeMaterials(focused);
+          slot.focusMaterials.clear();
           adjustment.remove(slot.model);
           disposeModel(slot.model);
           slot.solid.clear();
@@ -380,4 +428,8 @@ function disposeModel(root: Object3D): void {
   for (const texture of textures) texture.dispose();
   for (const material of materials) material.dispose();
   for (const geometry of geometries) geometry.dispose();
+}
+
+function disposeMaterials(value: Material | Material[]): void {
+  for (const material of Array.isArray(value) ? value : [value]) material.dispose();
 }
