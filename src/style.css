@@ -142,20 +142,8 @@ a:focus-visible {
 }
 
 .brand-mark {
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--brand-accent);
-  border-radius: 8px;
-  transform: rotate(45deg);
-}
-
-.brand-mark span {
-  width: 9px;
-  height: 9px;
-  border: 1px solid var(--brand-accent);
-  border-radius: 50%;
+  display: block;
+  flex: none;
 }
 
 .viewer-label {
@@ -1054,6 +1042,11 @@ h1 {
 }
 
 @media (max-width: 420px) {
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+  }
+
   .page-heading {
     align-items: start;
     flex-direction: column;
