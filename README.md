@@ -2,6 +2,8 @@
 
 X-Ray Mirror is a browser-based anatomy demo with head layers that follow head pose in a mirrored camera preview. For demonstration only. The overlay scales and aligns a 3D model of one reference adult to your head. Camera video stays on your device.
 
+[Open the HTTPS demo](https://xray-mirror-6y5.pages.dev/).
+
 ## Run locally
 
 Use Node.js 24.11 or later and Chrome on Windows for the reference setup.
@@ -57,6 +59,7 @@ For shader tuning, open the dev server with `?tune` in the URL and start the cam
 
 - MediaPipe Tasks Vision provides the runtime. Dev and build copy the Web Worker WASM and loader from the exact version in the lockfile. The versioned Face Landmarker loads with the camera. Hand Landmarker loads when **Hand bones** or the lens is enabled. [MediaPipe Tasks Vision](https://www.npmjs.com/package/@mediapipe/tasks-vision) · [Face model](https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task) · [Hand model](https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task)
 - BodyParts3D, © The Database Center for Life Science licensed under [CC Attribution 4.0 International](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html).
+- The [link preview image](public/social-preview.png) pairs the project title with an X-ray render of the BodyParts3D skull. It contains only the rendered overlay and graphic elements.
 - `public/models/skull.glb` contains 22 cranial and facial bones, including the mandible, from the [BodyParts3D 4.0 reduced IS-A archive](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html).
 - Skull source OBJ IDs are `FJ3199`, `FJ3200`, `FJ3263`, `FJ3265`, `FJ3269`, `FJ3272`, `FJ3273`, `FJ3274`, `FJ3281`, `FJ3287`, `FJ3289`, `FJ3309`, `FJ3369`, `FJ3371`, `FJ3375`, `FJ3378`, `FJ3379`, `FJ3380`, `FJ3386`, `FJ3392`, `FJ3394`, and `FJ3395`.
 - `brain.glb`, `muscles.glb`, and `eyes.glb` use the same BodyParts3D archive. They represent the brain (`FMA50801`), head muscles (`FMA9616`), and structures of both eyeballs (`FMA12514` and `FMA12515`). The converter records the exact OBJ IDs, applies the skull's origin and units, assigns display materials, and reduces the triangle count of the eye meshes. [Head-layer converter](scripts/convert-head-layers.py)
@@ -88,6 +91,8 @@ To measure the cold start, record transferred bytes from reload through the firs
 Phase 1 was checked on Chrome 157 for Windows using a physical webcam and a repeatable camera stream made from a public MediaPipe portrait. Browser checks observed the page and Worker network traffic through start, tracking, and stop. A test request from the Worker to the SDK metrics destination was rejected by its CSP.
 
 Phase 8 checks on Chrome and Edge 157 for Windows used a repeatable face and hand stream and captured the page and worker requests through camera stop. The browser sent only asset GETs. Chrome downloaded about 19.6 MB up to the first tracked skull draw in Vite preview. A local static server serving the same build with gzip on the MediaPipe WASM file brought that total to about 10.0 MB. Both totals include a conservative allowance for the worker script bootstrap. Optional layers and Hand Landmarker loaded after selecting **Everything**.
+
+On Cloudflare Pages, the HTML and both tracking worker responses carry the expected CSP, and the MediaPipe WASM is served with Brotli compression. Chrome and Edge on Windows passed the synthetic face and hand stream checks, permission denial, camera stop, and preference restore. The estimated cold transfer through the first tracked skull draw was about 8.8 MB in each browser. This estimate includes the compressed sizes of worker files missing from the browser capture. The observed HTTP traffic contained only asset GETs. These checks used a synthetic stream and do not measure physical camera latency.
 
 ## Interpreting measurements
 
