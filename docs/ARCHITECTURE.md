@@ -8,7 +8,7 @@
 4. `FaceTrackingFrame` describes the result independently of DOM or rendering types. A detected face contains 478 normalized XYZ triplets in unmirrored image coordinates and a column-major 4×4 pose matrix. One Euro filters smooth landmarks, translation, uniform scale, and quaternion orientation. Tracking loss clears the filters and returns a null face.
 5. Stop, camera disconnect, and page exit cancel the active session and stop its camera tracks. The page asks the Worker to close its task and terminates it if it does not acknowledge. A late permission result from an old session has its tracks stopped immediately. Tracker errors keep the camera preview available and expose a separate Retry action.
 
-The page and workers run locally in the browser. Third-party asset requests fetch the versioned Face Landmarker and Hand Landmarker models. Vite dev and preview apply an outbound connection policy to the page and workers, which blocks the SDK metrics destination.
+The page and workers run locally in the browser. Third-party asset requests fetch the versioned Face Landmarker and Hand Landmarker models. Vite dev and preview apply an outbound connection policy to the page and workers, which blocks the SDK metrics destination. Cloudflare Pages gets the production policy from `public/_headers`, copied into `dist/` at build time. Its wildcard rule applies to the page and both tracking worker responses.
 
 ## Phase 2 skull overlay
 
@@ -45,3 +45,7 @@ The head overlay stores a surface vertex on each labeled GLB mesh. Each frame wi
 ## Phase 8 model delivery
 
 The anatomy GLBs use Draco compression. Three.js loads its decoder from the app origin when the first selected model is parsed and shares up to two decode workers across the head layers. Parsed models remain available across camera restarts. Leaving the page or reloading the app in development disposes the decoder and its workers along with the renderer.
+
+## View preferences
+
+The page stores the current overlay controls in a versioned localStorage key alongside separate fit and theme preferences. It validates the saved settings and applies them through the Quick view path during startup. Preset buttons show matches for the restored controls. Camera sessions and tracking data stay in memory.

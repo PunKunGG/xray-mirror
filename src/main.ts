@@ -1,6 +1,7 @@
 import { DEFAULT_FIT, FIT_KEYS, fitValue, readFit, saveFit, type HeadFit } from './anatomy/fit.ts';
 import { createAnatomyOverlay, type AnatomyOverlay } from './anatomy/anatomy-overlay.ts';
 import { ANATOMY_LAYERS, PRESETS, type AnatomyLayer } from './anatomy/layers.ts';
+import { readOverlaySettings, saveOverlaySettings } from './anatomy/overlay-settings.ts';
 import { VIEWS, type ViewSettings } from './anatomy/views.ts';
 import type { SkullLook } from './anatomy/xray-material.ts';
 import { explainCameraError, requestCamera, stopCameraTracks } from './camera.ts';
@@ -262,6 +263,20 @@ function applyView(view: ViewSettings): void {
   updateViewButtons();
 }
 
+function rememberOverlaySettings(): void {
+  saveOverlaySettings({
+    layers: [...selectedLayers],
+    look: lookSolid.checked ? 'solid' : 'xray',
+    brightness: brightness.valueAsNumber,
+    reveal: revealMode.value === 'hand-lens' ? 'hand-lens' : 'whole-head',
+    lensSize: lensSize.valueAsNumber,
+    realMe: revealReal.valueAsNumber,
+    feather: revealFeather.valueAsNumber,
+    labels: showLabels.checked,
+    diagnostics: showTracking.checked,
+  });
+}
+
 function prepareAnatomy(): void {
   try {
     if (!anatomy) {
@@ -415,10 +430,21 @@ for (const button of presetButtons) {
     selectedLayers = new Set(PRESETS[button.dataset.layerPreset as keyof typeof PRESETS]);
     updateLayers();
     updateViewButtons();
+    rememberOverlaySettings();
   });
 }
 for (const button of viewButtons) {
-  button.addEventListener('click', () => applyView(VIEWS[button.dataset.viewPreset as keyof typeof VIEWS]));
+  button.addEventListener('click', () => {
+    applyView(VIEWS[button.dataset.viewPreset as keyof typeof VIEWS]);
+    rememberOverlaySettings();
+  });
+}
+// Sliders update the preview on input and save once the user commits the change.
+for (const control of [
+  showTracking, showLabels, lookXRay, lookSolid, brightness, revealMode, lensSize, revealReal, revealFeather,
+  ...layerControls.map(({ checkbox }) => checkbox),
+]) {
+  control.addEventListener('change', rememberOverlaySettings);
 }
 // User edits update the highlighted view after the control's own listener has run.
 element('overlay-settings').addEventListener('input', updateViewButtons);
@@ -443,11 +469,9 @@ function dispose(): void {
 
 window.addEventListener('pagehide', dispose);
 if (import.meta.hot) import.meta.hot.dispose(dispose);
+
+const savedSettings = readOverlaySettings();
+showTracking.checked = savedSettings.diagnostics;
 updateFit(fit);
-updateAppearance();
-updateReveal();
-updateLens();
-updateLayers();
-updateViewButtons();
+applyView(savedSettings);
 showDebug();
-preview.setLabels(showLabels.checked);

@@ -45,7 +45,12 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 
 ### Info
 - FR-18: Visible notice: for demonstration only. The app scales and aligns a 3D reference dataset of one adult to the head. Camera frames are processed on the device and never uploaded.
+- FR-18a: The initial HTML includes a descriptive page title, a search description, and an introduction to the head and hand anatomy demo that is visible before the camera starts.
 - FR-19: Visible attribution line: "BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International", with a link to the license.
+
+### Page theme
+- FR-20: Switch between Light and Dark in the header, with Dark as the default. Remember the choice on this browser and origin when storage is available. Changing the page theme preserves the active camera session, anatomy look, and selected view.
+- FR-21: Automatically save layers, look, brightness, reveal, lens size, camera blend, feather, labels, and diagnostics in localStorage. Restore these preferences when the app opens on the same browser and origin. Camera access still starts from the user's Start camera action.
 
 ## 4. Non-Functional Requirements
 - NFR-1: Performance: at least 25 FPS on a typical laptop (target 30+). Tracking must not block rendering.

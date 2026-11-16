@@ -13,9 +13,13 @@ npm run dev
 
 Open `http://localhost:5173`, select **Start camera**, and allow access. **Stop** releases the camera. Use `npm.cmd` on Windows if PowerShell restricts `npm.ps1`.
 
+Choose **Light** or **Dark** in the header to change the page theme. Dark is the default. Your choice is saved for this browser and origin when storage is available.
+
 Use **Quick view** to set the overlay in one click. **Classic** restores the default X-ray skull. **Study** enables every layer and shows labels. **Hand lens** reveals the skull through a lens that follows your hand. **Hands only** shows solid hand bones with labels. You can change any setting afterward. Your saved head fit stays in effect when you switch views.
 
 Open **Diagnostics** and turn on **Show tracking data** to see landmarks, render FPS, tracking FPS, detection time, frame age, and the active delegate.
+
+The app remembers your layers, look, brightness, reveal settings, labels, and diagnostics when you return to the same address in the same browser. This includes changes made with presets and individual controls. Select **Start camera** when you're ready to use the saved settings.
 
 Under **Appearance and reveal**, choose **X-ray** for a colored glow along the head models and blue hand bones, or **Solid** for lit head models and opaque, shaded hand bones. **Brightness** adjusts both the head and hand bones from 0% to 200%. X-ray and 100% are the defaults.
 
@@ -71,11 +75,13 @@ Compression preserves the mesh names, triangle counts and materials and reduces 
 
 ## Verify camera privacy
 
-Camera frames stay in memory and transfer from the page to local tracking workers. The workers return landmark coordinates and the head pose matrix through `postMessage`. Both Vite servers set a Content Security Policy that allows requests to the app origin and the two exact MediaPipe model URLs. Dev also allows the local Vite socket. This policy blocks the MediaPipe SDK’s external metrics endpoint. Carry the same production policy to the static host when publishing.
+Camera frames stay in memory and transfer from the page to local tracking workers. The workers return landmark coordinates and the head pose matrix through `postMessage`. Vite and Cloudflare Pages use a Content Security Policy that allows connections to the app origin and the two pinned MediaPipe model URLs. Vite dev also allows the local Vite socket. The connection policy blocks the MediaPipe SDK’s external metrics endpoint.
+
+Vite copies [`public/_headers`](public/_headers) to `dist/_headers`. Include it when uploading `dist/` to Cloudflare Pages. After uploading, check the HTTPS responses for the page and both `*.worker-*.js` files for the `Content-Security-Policy` header. The Worker responses need their own header. Update the model URLs in `public/_headers` whenever the app's pinned model URLs change.
 
 In Chrome DevTools, open **Network**, turn on **Preserve log**, disable cache, and reload the production preview. Start the camera, turn on tracking data, enable **Everything**, choose the hand lens, and stop the camera. Inspect the page and Worker traffic. Expected successful requests are `GET`s for static assets, including the same-origin anatomy GLBs, WASM, and both versioned `.task` files. A blocked SDK metrics request may appear when a landmarker closes. Check the request status and verify that neither frames nor coordinates appear in request URLs or payloads.
 
-To measure the cold start, record transferred bytes from reload through the first tracked skull draw, including requests from the face worker. Keep the default **Skull** preset for that measurement. Measure requests made after enabling **Everything** separately. Check the media runtime's `Content-Encoding` when comparing servers.
+To measure the cold start, record transferred bytes from reload through the first tracked skull draw, including requests from the face worker. Use a fresh browser profile or select **Classic** before reloading. Measure requests made after enabling **Everything** separately. Check the media runtime's `Content-Encoding` when comparing servers.
 
 Phase 1 was checked on Chrome 157 for Windows using a physical webcam and a repeatable camera stream made from a public MediaPipe portrait. Browser checks observed the page and Worker network traffic through start, tracking, and stop. A test request from the Worker to the SDK metrics destination was rejected by its CSP.
 
