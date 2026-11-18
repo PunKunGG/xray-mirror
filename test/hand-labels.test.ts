@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { handLabelAnchors } from '../src/anatomy/hand-bones.ts';
-import { COMPACT_LABEL_HEIGHT, layoutLabels } from '../src/anatomy/label-layout.ts';
+import { DEFAULT_LABEL_OPTIONS, labelsForFocus } from '../src/anatomy/label-options.ts';
 import type { TrackedHand } from '../src/tracking/types.ts';
 
 function hand(id: number, flipped = false): TrackedHand {
@@ -33,19 +33,23 @@ test('hand labels follow finger segments and mirror the radial and ulnar sides',
   }
 });
 
-test('compact layout fits all labels for one hand and keeps both hands represented when crowded', () => {
-  const toScreen = (labels: ReturnType<typeof handLabelAnchors>) =>
-    labels.map((label) => ({ ...label, x: label.x * 320, y: label.y * 210 }));
-  assert.equal(layoutLabels(toScreen(handLabelAnchors([hand(1)])), 160, 210, true).length, 17);
-
-  const rows = layoutLabels(toScreen(handLabelAnchors([hand(1), hand(2, true)])), 160, 210, true);
-  assert.equal(rows.length, 24);
-  for (const name of ['Phalanges', 'Metacarpus', 'Carpus', 'Distal phalanx', 'Metacarpal']) {
-    assert.equal(rows.filter(({ text }) => text === name).length, 2);
-  }
-  for (const side of ['left', 'right']) {
-    const column = rows.filter((label) => label.side === side);
-    assert.ok(column.every((row, index) => index === 0 || row.rowY - column[index - 1].rowY > COMPACT_LABEL_HEIGHT));
+test('hand groups are scoped by stable hand IDs and keep detailed names available', () => {
+  const first = hand(1);
+  const second = hand(2, true);
+  const inOrder = handLabelAnchors([first, second]);
+  const reversed = handLabelAnchors([second, first]);
+  const overview = (labels: typeof inOrder) => labelsForFocus([], labels, DEFAULT_LABEL_OPTIONS);
+  assert.deepEqual(overview(reversed), overview(inOrder));
+  assert.deepEqual(overview(inOrder).map(({ text }) => text), [
+    'Phalanges', 'Phalanges', 'Metacarpus', 'Metacarpus', 'Carpus', 'Carpus',
+  ]);
+  const wristLabels = (labels: typeof inOrder) => labelsForFocus([], labels, { ...DEFAULT_LABEL_OPTIONS, focus: 'hands', handGroup: 'wrist' });
+  const wrist = wristLabels(reversed);
+  assert.deepEqual(wrist, wristLabels(inOrder));
+  assert.equal(wrist.length, 16);
+  assert.ok(wrist.every((anchor) => 'handId' in anchor && anchor.group === 'wrist' && anchor.estimated));
+  for (const handId of [1, 2]) {
+    assert.equal(wrist.filter((anchor) => 'handId' in anchor && anchor.handId === handId).length, 8);
   }
 });
 

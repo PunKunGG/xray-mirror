@@ -1,18 +1,35 @@
 import type { Lens } from './hand-bones.ts';
-import { COMPACT_LABEL_HEIGHT, LABEL_HEIGHT, LABEL_MARGIN, layoutLabels, type LabelAnchor } from './label-layout.ts';
+import { labelsForFocus, type HandLabelAnchor, type HeadLabelAnchor, type LabelAnchor, type LabelOptions } from './label-options.ts';
+import { layoutNearLabels, type NearLabelPlacement } from './near-label-layout.ts';
 
-export function createLabelOverlay(canvas: HTMLCanvasElement) {
+export function createLabelOverlay(canvas: HTMLCanvasElement, onOverflow: (names: readonly string[]) => void) {
   const context = canvas.getContext('2d');
+  const widths = new Map<string, number>();
   let viewportWidth = 0;
   let viewportHeight = 0;
   let imageWidth = 0;
   let imageHeight = 0;
   let painted = false;
+  let slots = new Map<string, NearLabelPlacement['slot']>();
+  let overflowKey = '';
 
-  function clear(): void {
+  function clearDrawing(): void {
     if (!painted) return;
     context?.clearRect(0, 0, viewportWidth, viewportHeight);
     painted = false;
+  }
+
+  function updateOverflow(names: readonly string[]): void {
+    const key = names.join('\n');
+    if (key === overflowKey) return;
+    overflowKey = key;
+    onOverflow(names);
+  }
+
+  function reset(): void {
+    clearDrawing();
+    slots.clear();
+    updateOverflow([]);
   }
 
   function insideImage({ x, y }: LabelAnchor): boolean {
@@ -25,8 +42,10 @@ export function createLabelOverlay(canvas: HTMLCanvasElement) {
   }
 
   return {
-    clear,
+    clear: reset,
     resize(width: number, height: number, videoWidth: number, videoHeight: number, dpr: number): void {
+      reset();
+      widths.clear();
       viewportWidth = width;
       viewportHeight = height;
       imageWidth = videoWidth;
@@ -34,48 +53,50 @@ export function createLabelOverlay(canvas: HTMLCanvasElement) {
       canvas.width = Math.max(1, Math.round(width * dpr));
       canvas.height = Math.max(1, Math.round(height * dpr));
       if (width && height) context?.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-      painted = false;
     },
-    render(head: readonly LabelAnchor[], hands: readonly LabelAnchor[], centerX: number, lens: Lens | null): void {
+    render(head: readonly HeadLabelAnchor[], hands: readonly HandLabelAnchor[], options: LabelOptions, lens: Lens | null): void {
       if (!context || !viewportWidth || !viewportHeight) return;
-      clear();
-      const offsetX = (viewportWidth - imageWidth) / 2;
-      const offsetY = (viewportHeight - imageHeight) / 2;
-      const screenX = (x: number) => offsetX + (1 - x) * imageWidth;
-      const visibleHead = new Map<string, LabelAnchor>();
+      clearDrawing();
+      const left = (viewportWidth - imageWidth) / 2;
+      const top = (viewportHeight - imageHeight) / 2;
+      const visibleHead = new Map<string, HeadLabelAnchor>();
       for (const anchor of head) {
-        if (visibleHead.has(anchor.text) || !insideImage(anchor) || (lens && !insideLens(anchor, lens))) continue;
-        visibleHead.set(anchor.text, anchor);
+        const id = `${anchor.layer}:${anchor.text}`;
+        if (visibleHead.has(id) || !insideImage(anchor) || (lens && !insideLens(anchor, lens))) continue;
+        visibleHead.set(id, anchor);
       }
-      const anchors = [...visibleHead.values(), ...hands.filter(insideImage)]
-        .map((anchor) => ({ ...anchor, x: screenX(anchor.x), y: offsetY + anchor.y * imageHeight }));
-      const compact = hands.length > 0 && (viewportWidth < 460 ||
-        Math.ceil(anchors.length / 2) * (LABEL_HEIGHT + 4) + 2 * LABEL_MARGIN - 4 > viewportHeight);
-      const labels = layoutLabels(anchors, screenX(centerX), viewportHeight, compact);
-      if (!labels.length) return;
-
-      const rowHeight = compact ? COMPACT_LABEL_HEIGHT : LABEL_HEIGHT;
+      const compact = viewportWidth < 460;
       const padding = compact ? 5 : 7;
-      const maxWidth = Math.min(140, Math.floor(viewportWidth * 0.42));
-      context.font = compact ? '600 11px system-ui, sans-serif' : '600 12px "Inter", system-ui, sans-serif';
+      context.font = compact ? '600 11px system-ui, sans-serif' : '600 12px system-ui, sans-serif';
       context.textAlign = 'left';
       context.textBaseline = 'middle';
-      const rows = labels.map((label) => {
-        const width = Math.min(maxWidth, Math.ceil(context.measureText(label.text).width) + 2 * padding);
-        const left = label.side === 'left';
-        const boxX = left ? LABEL_MARGIN : viewportWidth - LABEL_MARGIN - width;
-        return { ...label, boxX, width, lineStart: left ? boxX + width : boxX };
+      const selected = labelsForFocus([...visibleHead.values()], hands.filter(insideImage), options);
+      const anchors = selected.map((anchor) => {
+        const subject = 'handId' in anchor ? `hand:${anchor.handId}` : 'head';
+        const id = 'layer' in anchor ? `${subject}:${anchor.layer}:${anchor.text}` : `${subject}:${anchor.text}`;
+        let width = widths.get(anchor.text);
+        if (width === undefined) {
+          width = Math.ceil(context.measureText(anchor.text).width) + 2 * padding;
+          widths.set(anchor.text, width);
+        }
+        return { ...anchor, subject, id, width, x: left + (1 - anchor.x) * imageWidth, y: top + anchor.y * imageHeight };
       });
+      const limit = options.focus === 'overview' ? (compact ? 4 : 6) : (compact ? 5 : 8);
+      const rows = layoutNearLabels(anchors, { left, top, width: imageWidth, height: imageHeight }, {
+        limit, maxLeader: compact ? 64 : 96, rowHeight: compact ? 18 : 22,
+      }, slots);
+      slots = new Map(rows.map(({ anchor, slot }) => [anchor.id, slot]));
 
-      context.lineJoin = 'round';
-      for (const row of rows) {
-        const reach = row.x - row.lineStart;
-        const elbow = row.lineStart + Math.sign(reach) * Math.min(12, Math.abs(reach) / 2);
+      const overflow = options.focus === 'overview' ? []
+        : [...new Set(anchors.filter(({ id }) => !slots.has(id)).map(({ text }) => text))].sort();
+      updateOverflow(overflow);
+      if (!rows.length) return;
+
+      for (const { anchor, lineX, lineY } of rows) {
         context.beginPath();
-        context.moveTo(row.lineStart, row.rowY);
-        context.lineTo(elbow, row.rowY);
-        context.lineTo(row.x, row.y);
-        context.setLineDash(row.estimated ? [3, 3] : []);
+        context.moveTo(lineX, lineY);
+        context.lineTo(anchor.x, anchor.y);
+        context.setLineDash(anchor.estimated ? [3, 3] : []);
         context.strokeStyle = '#07131d';
         context.lineWidth = 3;
         context.stroke();
@@ -83,21 +104,21 @@ export function createLabelOverlay(canvas: HTMLCanvasElement) {
         context.lineWidth = 1;
         context.stroke();
         context.beginPath();
-        context.arc(row.x, row.y, 2.5, 0, Math.PI * 2);
+        context.arc(anchor.x, anchor.y, 2.5, 0, Math.PI * 2);
         context.fillStyle = '#8bdbf6';
         context.fill();
       }
       context.setLineDash([]);
 
-      for (const row of rows) {
+      for (const { anchor, x, y, width, height } of rows) {
         context.beginPath();
-        context.roundRect(row.boxX, row.rowY - rowHeight / 2, row.width, rowHeight, 4);
+        context.roundRect(x, y, width, height, 4);
         context.fillStyle = '#10222e';
         context.fill();
         context.strokeStyle = '#426477';
         context.stroke();
         context.fillStyle = '#eefaff';
-        context.fillText(row.text, row.boxX + padding, row.rowY, row.width - 2 * padding);
+        context.fillText(anchor.text, x + padding, y + height / 2);
       }
       painted = true;
     },

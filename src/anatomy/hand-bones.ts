@@ -1,5 +1,5 @@
 import type { TrackedHand } from '../tracking/types.ts';
-import type { LabelAnchor } from './label-layout.ts';
+import type { HandLabelAnchor, HandLabelGroup } from './label-options.ts';
 import type { SkullLook } from './xray-material.ts';
 
 // Palm rays followed by finger joints. The thumb starts at its tracked CMC.
@@ -122,11 +122,11 @@ export function palmCenter(landmarks: Float32Array): { x: number; y: number } {
   return { x: x / PALM_POINTS.length, y: y / PALM_POINTS.length };
 }
 
-export function handLabelAnchors(hands: readonly TrackedHand[]): LabelAnchor[] {
-  const [first, second] = hands.map(({ landmarks }) => labelsForHand(landmarks));
+export function handLabelAnchors(hands: readonly TrackedHand[]): HandLabelAnchor[] {
+  const [first, second] = hands.map(labelsForHand);
   if (!first) return [];
   if (!second) return [...first.groups, ...first.bones];
-  const pairedBones: LabelAnchor[] = [];
+  const pairedBones: HandLabelAnchor[] = [];
   for (let index = 0; index < Math.max(first.bones.length, second.bones.length); index++) {
     if (first.bones[index]) pairedBones.push(first.bones[index]);
     if (second.bones[index]) pairedBones.push(second.bones[index]);
@@ -137,43 +137,45 @@ export function handLabelAnchors(hands: readonly TrackedHand[]): LabelAnchor[] {
   ];
 }
 
-function labelsForHand(landmarks: Float32Array): { groups: LabelAnchor[]; bones: LabelAnchor[] } {
+function labelsForHand({ id: handId, landmarks }: TrackedHand): { groups: HandLabelAnchor[]; bones: HandLabelAnchor[] } {
   const [, middleMcp, , middleDip] = BONE_CHAINS[2];
   const [, pinkyMcp, pinkyPip, pinkyDip, pinkyTip] = BONE_CHAINS[4];
-  const segment = (text: string, start: number, end: number): LabelAnchor => ({
-    text,
+  const segment = (text: string, start: number, end: number, overview = false): HandLabelAnchor => ({
+    text, handId, group: 'fingers', overview,
     x: (landmarks[start * 3] + landmarks[end * 3]) / 2,
     y: (landmarks[start * 3 + 1] + landmarks[end * 3 + 1]) / 2,
   });
 
   const palm = palmFrame(landmarks);
-  const metacarpal = (text: string, mcp: number): LabelAnchor => {
+  const metacarpal = (text: string, mcp: number, overview = false): HandLabelAnchor => {
     const base = metacarpalBase(palm, mcp);
     return {
-      text,
+      text, handId, group: 'palm', overview,
       x: (base.x + landmarks[mcp * 3]) / 2,
       y: (base.y + landmarks[mcp * 3 + 1]) / 2,
     };
   };
-  const estimate = (text: string, along: number, across: number): LabelAnchor => ({
-    text,
+  const estimate = (group: HandLabelGroup, text: string, along: number, across: number, overview = false): HandLabelAnchor => ({
+    text, handId, group, overview,
     ...palm.project(along, across),
     estimated: true,
   });
 
   return {
     groups: [
-      segment('Phalanges', middleMcp, middleDip),
-      metacarpal('Metacarpus', middleMcp),
-      ...(palm.hasArea ? [estimate('Carpus', 0.20, 0)] : []),
+      segment('Phalanges', middleMcp, middleDip, true),
+      metacarpal('Metacarpus', middleMcp, true),
+      ...(palm.hasArea ? [estimate('wrist', 'Carpus', 0.20, 0, true)] : []),
     ],
     bones: [
       segment('Distal phalanx', pinkyDip, pinkyTip),
       segment('Middle phalanx', pinkyPip, pinkyDip),
       segment('Proximal phalanx', pinkyMcp, pinkyPip),
       metacarpal('Metacarpal', pinkyMcp),
-      ...(palm.hasArea ? [...CARPAL_BONES, ...FOREARM_BONES].map(({ text, along, across }) =>
-        estimate(text, along, across)) : []),
+      ...(palm.hasArea ? [
+        ...CARPAL_BONES.map(({ text, along, across }) => estimate('wrist', text, along, across)),
+        ...FOREARM_BONES.map(({ text, along, across }) => estimate('forearm', text, along, across)),
+      ] : []),
     ],
   };
 }

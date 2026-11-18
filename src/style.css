@@ -783,18 +783,34 @@ h1 {
   padding: 0 14px;
 }
 
-.jaw-surface[data-input="example"] {
+.jaw-surface[data-input="example"], .lab-model-surface[data-input="example"] {
   transform: translate(-50%, -50%);
 }
 
-.jaw-turn-controls {
+.lab-stage canvas[data-picking] {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.lab-choice-descriptions summary {
+  padding: 10px 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.lab-description-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.lab-turn-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
 
-.jaw-turn-controls .button {
+.lab-turn-controls .button {
   min-height: 44px;
 }
 
@@ -980,6 +996,109 @@ h1 {
   height: 17px;
   margin: 0;
   accent-color: var(--accent);
+}
+
+.label-options {
+  margin-top: 14px;
+}
+
+.label-focus-options {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.label-focus-options legend,
+.label-group label {
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.label-focus-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  background: var(--well);
+}
+
+.label-focus-choices label {
+  position: relative;
+  cursor: pointer;
+}
+
+.label-focus-choices input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.label-focus-choices span {
+  display: grid;
+  min-height: 44px;
+  place-items: center;
+  padding: 0 3px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.label-focus-choices input:checked + span {
+  border-color: var(--selected-border);
+  background: var(--selected);
+  color: var(--selected-text);
+}
+
+.label-focus-choices input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.label-group {
+  display: grid;
+  margin-top: 14px;
+}
+
+.label-group select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--button-border);
+  border-radius: 7px;
+  background: var(--button);
+  color: var(--text);
+}
+
+.label-group-notice {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.label-overflow {
+  margin-top: 14px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.label-overflow summary {
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.label-overflow ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  line-height: 1.6;
 }
 
 @media (max-width: 900px) {

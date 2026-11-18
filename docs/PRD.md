@@ -38,10 +38,10 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 ### Mixed reality
 - FR-14: "Real me showing through" slider blends the real video with the skull.
 - FR-15: Edge feather slider.
-- FR-16: Reveal dropdown with modes: "Whole head" (overlay covers the entire head; default when no hand is detected) and "X-ray lens (follows your hand)" (a circular lens that follows the hand and reveals the anatomy inside it). Lens size slider.
+- FR-16: Reveal dropdown with modes: "Whole head" (overlay covers the entire head; default when no hand is detected) and "X-ray lens (follows your hand)" (a circular lens that follows the hand and reveals the anatomy inside it). The lens size slider sets the diameter from 10% to 100% of the shorter preview side.
 
 ### Labels
-- FR-17: "Show labels" toggle: leader lines + organ names, projected from 3D to screen each frame. Labels are placed in two columns, left and right of the head, sorted by screen Y so text never overlaps, with leader lines running to each structure. Hand bones get labels too when a hand is visible.
+- FR-17: **Show labels** displays names near their head or hand anchors, with short leaders and non-overlapping boxes inside the camera image. **Overview** reserves space for visible subjects and shows up to six labels, or four below 460 px of preview width. **Head** and **Hands** show a selected group with up to eight labels, or five below 460 px. Eligible detail labels that cannot fit appear in a collapsible list. Label focus is independent of anatomy layers.
 
 ### Info
 - FR-18: Visible notice: for demonstration only. The app scales and aligns a 3D reference dataset of one adult to the head. Camera frames are processed on the device and never uploaded.
@@ -50,7 +50,7 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 
 ### Page theme
 - FR-20: Switch between Light and Dark in the header, with Dark as the default. Remember the choice on this browser and origin when storage is available. Changing the page theme preserves the active camera session, anatomy look, and selected view.
-- FR-21: Automatically save layers, look, brightness, reveal, lens size, camera blend, feather, labels, and diagnostics in localStorage. Restore these preferences when the app opens on the same browser and origin. Camera access still starts from the user's Start camera action.
+- FR-21: Automatically save layers, look, brightness, reveal, lens size, camera blend, feather, label visibility and focus, and diagnostics in localStorage. Restore these preferences when the app opens on the same browser and origin. Camera access still starts from the user's Start camera action.
 
 ## 4. Non-Functional Requirements
 - NFR-1: Performance: at least 25 FPS on a typical laptop (target 30+). Tracking must not block rendering.
@@ -97,5 +97,7 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 - The Mirror remains the home view. Anatomy Lab opens the English **Finger Joints** lesson in Example mode. Users can complete the same three steps in Example or with hand tracking by straightening, bending, and identifying the middle joint of the index finger.
 - Highlight the joint and adjacent bones with written guidance. If a pose cannot be detected, preserve completed steps and let the user restart the current movement or switch to Example.
 - The **Maxilla & Mandible** lesson highlights the paired upper jaw bones and the lower jaw on the reference skull and asks the learner to identify both. Users can select a front or side view in Example or turn their head in the live view.
+- After completing **Maxilla & Mandible**, learners can choose **Find the Bone** to locate the mandible, then the maxilla, in Example. Correct answers reveal a highlight and explanation. Learners can also answer using descriptions, which open automatically when the 3D view is unavailable. Starting practice stops the live camera.
+- **Brain Regions** guides learners through the cerebrum, cerebellum, and brainstem. Example shows the reference model from the front, side, and back. During the guided tour, learners can opt into camera-based head tracking and return to Example on the same region. Starting practice stops the camera and presents the reference model for picking regions or answering by description. The lesson restarts in Example when reopened.
 - Lab settings and progress live in memory. Camera access is explicit and stops when leaving the live lesson. The lab preserves saved Mirror preferences and uses no new models or dependencies.
 - Before releasing V2, test with a physical camera in Chrome on Windows and Android. Give three beginners the lesson without instructions. The target is at least two finishing within two minutes and explaining that the PIP joint connects the proximal and middle phalanges.

@@ -111,6 +111,39 @@
                 <span>Show labels</span>
                 <input id="show-labels" type="checkbox" />
               </label>
+              <div id="label-options" class="label-options" hidden>
+                <fieldset class="label-focus-options">
+                  <legend>Label focus</legend>
+                  <div class="label-focus-choices">
+                    <label><input id="label-focus-overview" type="radio" name="label-focus" value="overview" checked /><span>Overview</span></label>
+                    <label><input id="label-focus-head" type="radio" name="label-focus" value="head" /><span>Head</span></label>
+                    <label><input id="label-focus-hands" type="radio" name="label-focus" value="hands" /><span>Hands</span></label>
+                  </div>
+                </fieldset>
+                <div id="label-head-options" class="label-group" hidden>
+                  <label for="label-head-group">Head group</label>
+                  <select id="label-head-group">
+                    <option value="skull">Skull</option>
+                    <option value="brain">Brain</option>
+                    <option value="muscles">Muscles</option>
+                    <option value="eyes">Eyes</option>
+                  </select>
+                </div>
+                <div id="label-hand-options" class="label-group" hidden>
+                  <label for="label-hand-group">Hand group</label>
+                  <select id="label-hand-group">
+                    <option value="fingers">Fingers</option>
+                    <option value="palm">Palm</option>
+                    <option value="wrist">Wrist</option>
+                    <option value="forearm">Forearm</option>
+                  </select>
+                </div>
+                <p id="label-group-notice" class="label-group-notice" hidden></p>
+                <details id="label-overflow" class="label-overflow" hidden>
+                  <summary>More labels in this group</summary>
+                  <ul id="label-overflow-list"></ul>
+                </details>
+              </div>
             </fieldset>
             <div id="anatomy-message" class="camera-message" role="status" aria-live="polite" hidden></div>
             <div id="hand-message" class="camera-message" role="status" aria-live="polite" hidden></div>
@@ -177,7 +210,7 @@
                       <label for="lens-size">Lens size</label>
                       <output id="lens-size-value" for="lens-size">30%</output>
                     </div>
-                    <input id="lens-size" type="range" min="10" max="60" step="1" value="30" aria-valuetext="30%" />
+                    <input id="lens-size" type="range" min="10" max="100" step="1" value="30" aria-valuetext="30%" />
                   </div>
                 </div>
                 <div class="fit-control">
@@ -255,6 +288,7 @@
         <div class="lab-lesson-selector" role="group" aria-label="Choose a lesson">
           <button id="lab-select-finger" class="button layer-preset" type="button" aria-pressed="true">Finger Joints</button>
           <button id="lab-select-jaw" class="button layer-preset" type="button" aria-pressed="false">Maxilla &amp; Mandible</button>
+          <button id="lab-select-brain" class="button layer-preset" type="button" aria-pressed="false">Brain Regions</button>
         </div>
 
         <section id="finger-lesson" aria-labelledby="lab-title">
@@ -328,7 +362,7 @@
               <h1 id="jaw-title" tabindex="-1">Maxilla &amp; Mandible</h1>
               <p class="page-description">Explore the upper and lower jaw, then test what you have learned.</p>
             </div>
-            <div class="lab-modes" role="group" aria-label="Choose how to explore the jaw">
+            <div id="jaw-modes" class="lab-modes" role="group" aria-label="Choose how to explore the jaw">
               <button id="jaw-use-example" class="button layer-preset" type="button" aria-pressed="true">Example</button>
               <button id="jaw-use-camera" class="button layer-preset" type="button" aria-pressed="false">Use camera</button>
             </div>
@@ -339,12 +373,12 @@
               <div id="jaw-stage" class="camera-stage lab-stage">
                 <div id="jaw-surface" class="camera-image jaw-surface" data-input="example">
                   <video id="jaw-video" autoplay muted playsinline aria-label="Mirrored camera preview" hidden></video>
-                  <canvas id="jaw-overlay" aria-label="Reference skull model"></canvas>
+                  <canvas id="jaw-overlay" role="img" aria-label="Reference skull model"></canvas>
                 </div>
               </div>
               <div class="lab-viewer-footer">
                 <p id="jaw-status" role="status" aria-live="polite">Example skull. Your camera is off.</p>
-                <div id="jaw-turn-controls" class="jaw-turn-controls" role="group" aria-label="Rotate the example skull">
+                <div id="jaw-turn-controls" class="lab-turn-controls" role="group" aria-label="Rotate the example skull">
                   <button class="button layer-preset" type="button" data-jaw-angle="left" aria-pressed="false">Left</button>
                   <button class="button layer-preset" type="button" data-jaw-angle="front" aria-pressed="true">Front</button>
                   <button class="button layer-preset" type="button" data-jaw-angle="right" aria-pressed="false">Right</button>
@@ -352,13 +386,13 @@
               </div>
             </section>
 
-            <section class="lab-lesson" aria-labelledby="jaw-step-title">
+            <section id="jaw-activity" class="lab-lesson" aria-labelledby="jaw-step-title">
               <ol id="jaw-steps" class="lab-steps" aria-label="Lesson progress">
                 <li data-jaw-step="upper">Upper jaw</li>
                 <li data-jaw-step="lower">Lower jaw</li>
                 <li data-jaw-step="quiz">Questions</li>
               </ol>
-              <div class="lab-lesson-content">
+              <div id="jaw-lesson-content" class="lab-lesson-content">
                 <h2 id="jaw-step-title" tabindex="-1">Explore the upper jaw</h2>
                 <p id="jaw-description">Find the maxilla above the mouth on the reference skull.</p>
                 <button id="jaw-next" class="button button-primary lab-action" type="button">Continue</button>
@@ -372,7 +406,73 @@
                   <button class="button button-primary lab-action" type="submit">Check answer</button>
                 </form>
                 <p id="jaw-feedback" class="lab-quiz-feedback" role="status" aria-live="polite"></p>
+                <button id="jaw-open-challenge" class="button button-primary lab-action" type="button" hidden>Find the Bone</button>
                 <button id="jaw-restart" class="button button-secondary lab-action" type="button" hidden>Start over</button>
+              </div>
+              <div id="jaw-challenge" class="lab-lesson-content" hidden>
+                <h2 id="jaw-challenge-title" tabindex="-1">Find the mandible</h2>
+                <p id="jaw-challenge-instructions">Select a bone on the skull.</p>
+                <details id="jaw-challenge-descriptions" class="lab-choice-descriptions">
+                  <summary>Choose by description</summary>
+                  <div class="lab-description-buttons">
+                    <button class="button button-secondary" type="button" data-jaw-part="Maxilla">Area above the upper teeth</button>
+                    <button class="button button-secondary" type="button" data-jaw-part="Mandible">Area around the chin</button>
+                  </div>
+                </details>
+                <p id="jaw-challenge-feedback" class="lab-quiz-feedback" role="status" aria-live="polite"></p>
+                <button id="jaw-challenge-next" class="button button-primary lab-action" type="button" hidden>Next question</button>
+                <button id="jaw-close-challenge" class="button button-secondary lab-action" type="button">Back to lesson</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="brain-lesson" aria-labelledby="brain-title" hidden>
+          <div class="lab-heading">
+            <div>
+              <p class="lab-eyebrow">Anatomy Lab</p>
+              <h1 id="brain-title" tabindex="-1">Brain Regions</h1>
+              <p class="page-description">Explore the cerebrum, cerebellum, and brainstem before finding each region on the model.</p>
+            </div>
+            <div id="brain-modes" class="lab-modes" role="group" aria-label="Choose how to explore the brain">
+              <button id="brain-use-example" class="button layer-preset" type="button" aria-pressed="true">Example</button>
+              <button id="brain-use-camera" class="button layer-preset" type="button" aria-pressed="false" disabled>Use camera</button>
+            </div>
+          </div>
+
+          <div class="lab-layout">
+            <section class="lab-viewer" aria-label="Reference brain">
+              <div id="brain-stage" class="camera-stage lab-stage">
+                <div id="brain-surface" class="camera-image lab-model-surface" data-input="example">
+                  <video id="brain-video" autoplay muted playsinline aria-label="Mirrored camera preview" hidden></video>
+                  <canvas id="brain-overlay" role="img" aria-label="3D model of the brain"></canvas>
+                </div>
+              </div>
+              <div class="lab-viewer-footer">
+                <p id="brain-status" role="status" aria-live="polite"></p>
+                <div id="brain-turn-controls" class="lab-turn-controls" role="group" aria-label="Rotate the reference brain" hidden>
+                  <button class="button layer-preset" type="button" data-brain-angle="front" aria-pressed="true">Front</button>
+                  <button class="button layer-preset" type="button" data-brain-angle="side" aria-pressed="false">Side</button>
+                  <button class="button layer-preset" type="button" data-brain-angle="back" aria-pressed="false">Back</button>
+                </div>
+                <button id="brain-retry" class="button button-secondary lab-action" type="button" hidden>Retry model</button>
+              </div>
+            </section>
+
+            <section class="lab-lesson" aria-labelledby="brain-step-title">
+              <div class="lab-lesson-content">
+                <h2 id="brain-step-title" tabindex="-1">Cerebrum</h2>
+                <p id="brain-description"></p>
+                <details id="brain-descriptions" class="lab-choice-descriptions" hidden>
+                  <summary>Choose by description</summary>
+                  <div class="lab-description-buttons">
+                    <button class="button button-secondary" type="button" data-brain-region="Cerebrum">Large upper region</button>
+                    <button class="button button-secondary" type="button" data-brain-region="Cerebellum">Small rounded region at the lower back</button>
+                    <button class="button button-secondary" type="button" data-brain-region="Brainstem">Stalk extending downward at the base</button>
+                  </div>
+                </details>
+                <p id="brain-feedback" class="lab-quiz-feedback" role="status" aria-live="polite"></p>
+                <button id="brain-next" class="button button-primary lab-action" type="button">Continue</button>
               </div>
             </section>
           </div>

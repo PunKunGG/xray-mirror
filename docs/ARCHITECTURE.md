@@ -40,7 +40,7 @@ The shared 2D canvas draws the metacarpals and phalanges from unmirrored image c
 
 ## Phase 7 anatomy labels
 
-The head overlay stores a surface vertex on each labeled GLB mesh. Each frame with labels enabled projects those vertices through the same model transforms and perspective camera as the anatomy overlay. Hand labels use segment midpoints from the displayed hand skeleton and estimate wrist and forearm positions along and across the tracked palm. The label canvas reflects anchor coordinates inside the aspect-preserving video rectangle and draws the text normally. Two columns sit at the edges of the preview and reserve vertical space for each label in anchor Y order. When space is limited, the overlay uses shorter rows and prioritizes head and hand group labels. The overlay skips anchors outside the camera image and skips head anchors outside the active lens.
+The head overlay projects named mesh anchors and carries their model layer. Hand labels carry the tracked hand ID and anatomy group. Wrist and forearm anchors use estimates based on the tracked palm. The label canvas reflects anchors inside the aspect-preserving video rectangle, filters them by focus and lens, and reserves space for the visible head and hands before filling the remaining budget. It reuses feasible placements by anchor ID and keeps boxes and leaders inside the image. Unplaced detail names populate a DOM list in the controls.
 
 ## Phase 8 model delivery
 
@@ -55,3 +55,7 @@ The page stores the current overlay controls in a versioned localStorage key alo
 The Mirror and Lab take turns owning the camera. The Lab reuses the webcam helper, Hand Landmarker worker and 2D hand renderer. The model estimates the index joint angle from three landmarks in video proportions. Tracking retains one hand ID while visible and requires a new steady pose after a change or tracking loss. The Example view renders two authored landmark poses locally without loading the hand model. The lesson state and quiz results stay in memory.
 
 The jaw lesson reuses the skull GLB and its Solid renderer, with a highlight limited to the named maxilla or mandible meshes. Example renders reference poses without opening the camera. The live view uses the Face Landmarker and saved head fit. Switching lessons releases the current camera session and starts the selected lesson in Example.
+
+Find the Bone runs in Example after the jaw quiz. The overlay casts a ray from the selected canvas position and uses the nearest skull mesh. Pointer selections and the description buttons share the lesson's in-memory answer state and highlight the same meshes.
+
+Brain Regions lazily loads the existing brain GLB into the Solid overlay. Example rotates it about its center. The live guided tour shares the jaw lesson's camera lifecycle, Face Landmarker worker, and saved head fit. Entering practice returns to Example and stops any stream from the previous session, including one that arrives after a pending permission request. Highlighting and picking use the same BodyParts3D region mapping.

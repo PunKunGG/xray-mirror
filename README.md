@@ -17,11 +17,11 @@ Open `http://localhost:5173`, select **Start camera**, and allow access. **Stop*
 
 Choose **Light** or **Dark** in the header to change the page theme. Dark is the default. Your choice is saved for this browser and origin when storage is available.
 
-Use **Quick view** to set the overlay in one click. **Classic** restores the default X-ray skull. **Study** enables every layer and shows labels. **Hand lens** reveals the skull through a lens that follows your hand. **Hands only** shows solid hand bones with labels. You can change any setting afterward. Your saved head fit stays in effect when you switch views.
+Use **Quick view** to set the overlay in one click. **Classic** restores the default X-ray skull. **Study** enables every layer and shows Overview labels. **Hand lens** reveals the skull through a lens that follows your hand. **Hands only** shows solid hand bones with the Fingers labels. You can change any setting afterward. Your saved head fit stays in effect when you switch views.
 
 Open **Diagnostics** and turn on **Show tracking data** to see landmarks, render FPS, tracking FPS, detection time, frame age, and the active delegate.
 
-The app remembers your layers, look, brightness, reveal settings, labels, and diagnostics when you return to the same address in the same browser. This includes changes made with presets and individual controls. Select **Start camera** when you're ready to use the saved settings.
+The app remembers your layers, look, brightness, reveal settings, label visibility and focus, and diagnostics when you return to the same address in the same browser. This includes changes made with presets and individual controls. Select **Start camera** when you're ready to use the saved settings.
 
 Under **Appearance and reveal**, choose **X-ray** for a colored glow along the head models and blue hand bones, or **Solid** for lit head models and opaque, shaded hand bones. **Brightness** adjusts both the head and hand bones from 0% to 200%. X-ray and 100% are the defaults.
 
@@ -29,19 +29,19 @@ Open **Layers** to toggle **Skull**, **Brain**, **Muscles**, **Eyes**, **Head ou
 
 Under **Mixed reality**, **Whole head** reveals the full tracked anatomy. **Real me showing through** fades the 3D layers from their normal appearance at 0% to the camera view at 100%. **Edge feather** softens the silhouette inward by up to 24 pixels. Both sliders start at zero.
 
-Choose **X-ray lens (follows your hand)** and move an open hand in front of the camera. The circle follows one palm and reveals head anatomy inside it. **Lens size** sets the circle diameter from 10% to 60% of the shorter preview side. The reveal returns to **Whole head** while no hand is detected and resumes when a hand returns. **Hand bones** draws the articulated skeletons of up to two hands across the preview.
+Choose **X-ray lens (follows your hand)** and move an open hand in front of the camera. The circle follows one palm and reveals head anatomy inside it. **Lens size** sets the circle diameter from 10% to 100% of the shorter preview side. The reveal returns to **Whole head** while no hand is detected and resumes when a hand returns. **Hand bones** draws the articulated skeletons of up to two hands across the preview.
 
-Turn on **Show labels** under **Quick view** to identify selected head structures and the hand bones. In lens mode, a head label appears when its anchor is inside the circle. Hand labels appear with the **Hand bones** layer.
+Turn on **Show labels** under **Quick view**. **Overview** shows a few labels near the visible head and hands. Choose **Head** or **Hands**, then select a group to see detailed names. Open **More labels in this group** to read names that could not fit in the preview. Label focus is independent of the active anatomy layers. In lens mode, head labels require an anchor inside the circle.
 
 The **Skull** layer labels the frontal, parietal, temporal, occipital, and zygomatic bones, plus the maxilla and mandible. Paired bones share one label. It points to the nearer anchor within the active view.
 
 The **Brain** layer labels the cerebrum, cerebellum, and brainstem. The cerebrum label anchors to cerebral white matter, and the brainstem label anchors to the pons.
 
-Select **Eyes** as the only 3D head layer to see **Cornea**, **Iris**, **Lens**, and **Sclera**. Each detail label points to the nearer eligible anchor. With other 3D head layers selected, the eye labels are **Left eye** and **Right eye**.
+With the Eyes layer visible, choose **Head → Eyes** to see detail labels such as **Cornea**, **Iris**, **Lens**, and **Sclera**. Each label points to the nearer eligible anchor.
 
 The **Muscles** layer labels **Eye muscles**, **Tongue muscles**, and **Soft palate muscles**. The labels point to representative meshes for the inferior oblique, genioglossus, and levator veli palatini, respectively.
 
-Hand labels include the phalanges, metacarpus, carpus, and individual bones shown around the little finger, wrist, and distal forearm. The eight carpal bones and the wrist ends of the radius and ulna are drawn as reference shapes based on the tracked palm. Dashed leaders mark those estimates. The wrist and forearm shapes are hidden when the palm projects edge-on. When space is limited, the overlay keeps group labels before individual hand labels.
+Overview hand labels include the phalanges, metacarpus, and carpus. The **Hands** groups show the individual bones of the fingers, palm, wrist, and distal forearm. The eight carpal bones and the wrist ends of the radius and ulna are drawn as reference shapes based on the tracked palm. Dashed leaders mark those estimates. The wrist and forearm shapes are hidden when the palm projects edge-on.
 
 Use **Fit to my head** to adjust overall size, each dimension, and position. Positive offsets move the skull to the right in the mirror, up, or toward the viewer when you face the camera. The fit is saved on this browser and origin. **Reset fit** restores the defaults.
 
@@ -60,6 +60,10 @@ Choose **Explore Anatomy Lab** from the mirror to open **Finger Joints**. In **E
 If tracking loses your hand, bring one full hand back into view and repeat the current movement or switch to **Example** to continue. Returning to Example or the mirror releases the camera. The lesson starts fresh when reopened, and your mirror settings remain saved.
 
 Choose **Maxilla & Mandible** to see the same reference skull in three views in **Example**, or turn your head in **Use camera**. The lesson highlights each jaw in turn and asks you to identify both structures. The live view uses your saved head fit. Switching lessons stops the current camera and opens the new lesson in Example. [Skull anatomy reference](https://openstax.org/books/anatomy-and-physiology-2e/pages/7-2-the-skull)
+
+After **Lesson complete**, choose **Find the Bone** to locate the mandible and maxilla on the reference skull. The camera stops when you start the practice. Select a bone on the model or use **Choose by description** with a keyboard or if the model is unavailable.
+
+Choose **Brain Regions** to explore the cerebrum, cerebellum, and brainstem. Use **Example** for front, side, and back views, or choose **Use camera** during the guided tour to see the highlighted model follow your head. Switch back to **Example** to inspect the back without losing your place. Starting practice stops the camera and restores the reference model. Locate each region on the model or use **Choose by description**. The highlighted meshes follow the BodyParts3D IS-A element table. [Brain anatomy reference](https://openstax.org/books/anatomy-and-physiology-2e/pages/13-2-the-central-nervous-system) · [BodyParts3D element table](https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_element_parts.txt)
 
 For shader tuning, open the dev server with `?tune` in the URL and start the camera. The lil-gui panel exposes the rim power, rim strength, and surface glow.
 

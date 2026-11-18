@@ -1,5 +1,5 @@
 import {
-  AmbientLight, BufferGeometry, DirectionalLight, Group, LoadingManager, Material, Mesh, Scene, Texture, Vector3,
+  AmbientLight, BufferGeometry, DirectionalLight, Group, LoadingManager, Material, Mesh, Raycaster, Scene, Texture, Vector2, Vector3,
   WebGLRenderer,
   type Object3D, type ShaderMaterial,
 } from 'three';
@@ -7,11 +7,12 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type GUI from 'three/addons/libs/lil-gui.module.min.js';
 import type { TrackedFace } from '../tracking/types.ts';
+import { brainRegionForMesh, type BrainRegion } from './brain-regions.ts';
 import type { HeadFit } from './fit.ts';
 import { applyHeadFit, applyHeadPose, createHeadCamera } from './head-transform.ts';
 import { createHeadCompositor } from './head-compositor.ts';
 import type { Lens } from './hand-bones.ts';
-import type { LabelAnchor } from './label-layout.ts';
+import type { HeadLabelAnchor } from './label-options.ts';
 import { MODEL_LAYERS, type AnatomyLayer, type ModelLayer } from './layers.ts';
 import { createXRayMaterial, type SkullLook } from './xray-material.ts';
 
@@ -94,6 +95,7 @@ interface ModelSlot {
   xray: ShaderMaterial;
   solid: Map<Mesh, Material | Material[]>;
   focusMaterials: Map<Mesh, Material | Material[]>;
+  focus: SkullPart | BrainRegion | null;
   labels: ModelLabel[];
   selected: boolean;
   pending: boolean;
@@ -101,16 +103,27 @@ interface ModelSlot {
   model?: Object3D;
 }
 
+export type SkullPart = 'Maxilla' | 'Mandible';
+export type SkullPick = SkullPart | 'other' | null;
+
+function getSkullPart(mesh: Object3D): SkullPart | 'other' {
+  const label = HEAD_LABELS.skull[mesh.userData.name as string];
+  return label === 'Maxilla' || label === 'Mandible' ? label : 'other';
+}
+
 export interface AnatomyOverlay {
   setLayers(enabled: ReadonlySet<AnatomyLayer>): void;
   resize(width: number, height: number, aspect: number, dpr: number): void;
   setFit(fit: HeadFit): void;
   setAppearance(look: SkullLook, brightness: number): void;
-  setSkullFocus(part: 'Maxilla' | 'Mandible' | null): void;
+  setSkullFocus(part: SkullPart | null): void;
+  pickSkullPart(x: number, y: number): SkullPick;
+  setBrainFocus(part: BrainRegion | null): void;
+  pickBrainRegion(x: number, y: number): BrainRegion | 'other' | null;
   getLayerState(layer: ModelLayer): 'idle' | 'loading' | 'ready' | 'error';
   setReveal(realMe: number, featherPx: number): void;
   render(face: TrackedFace | null, lens: Lens | null): void;
-  getLabelAnchors(): LabelAnchor[];
+  getLabelAnchors(detailedEyes?: boolean): HeadLabelAnchor[];
   dispose(): void;
 }
 
@@ -133,6 +146,7 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       xray: createXRayMaterial(bodyColor, rimColor),
       solid: new Map(),
       focusMaterials: new Map(),
+      focus: null,
       labels: [],
       selected: false,
       pending: false,
@@ -152,7 +166,10 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
   let loader = new GLTFLoader().setDRACOLoader(decoder);
   let decoderFailed = false;
   let look: SkullLook = 'xray';
-  let skullFocus: 'Maxilla' | 'Mandible' | null = null;
+  const skullSlot = slots.find(({ name }) => name === 'skull')!;
+  const brainSlot = slots.find(({ name }) => name === 'brain')!;
+  const raycaster = new Raycaster();
+  const pickPoint = new Vector2();
   let realMe = 0;
   let featherPx = 0;
   let faceDrawn: TrackedFace | null = null;
@@ -191,13 +208,10 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
     }
   }
 
-  function applySkullFocus(): void {
-    const slot = slots.find(({ name }) => name === 'skull')!;
+  function applyFocus(slot: ModelSlot): void {
     for (const [mesh, original] of slot.solid) {
-      const originalName = mesh.userData.name as string;
-      const focused = skullFocus === 'Maxilla'
-        ? originalName === 'Maxilla left' || originalName === 'Maxilla right'
-        : skullFocus === 'Mandible' && originalName === 'Mandible';
+      const part = slot.name === 'skull' ? getSkullPart(mesh) : brainRegionForMesh(mesh.userData.name as string | undefined);
+      const focused = slot.focus !== null && part === slot.focus;
       if (!focused) {
         const previous = slot.focusMaterials.get(mesh);
         if (previous) disposeMaterials(previous);
@@ -216,6 +230,22 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
     }
     if (look === 'solid') applyMaterial(slot, look);
     invalidate();
+  }
+
+  function setFocus(slot: ModelSlot, part: ModelSlot['focus']): void {
+    if (slot.focus === part) return;
+    slot.focus = part;
+    applyFocus(slot);
+  }
+
+  function pickMesh(slot: ModelSlot, x: number, y: number): Object3D | null {
+    if (!faceDrawn || !slot.model?.visible || look !== 'solid' || lensDrawn || realMe === 1) return null;
+    if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return null;
+    pickPoint.set(x * 2 - 1, 1 - y * 2);
+    raycaster.setFromCamera(pickPoint, camera);
+    // Include every mesh as a nearer structure can occlude a target region.
+    const [hit] = raycaster.intersectObjects([...slot.solid.keys()], false);
+    return hit?.object ?? null;
   }
 
   function reportStatus(): void {
@@ -265,7 +295,7 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       model.visible = slot.selected;
       slot.model = model;
       adjustment.add(model);
-      if (slot.name === 'skull' && skullFocus !== null) applySkullFocus();
+      if (slot.focus !== null) applyFocus(slot);
       invalidate();
     } catch (error) {
       if (abort.signal.aborted) return;
@@ -321,9 +351,18 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       dirty = true;
     },
     setSkullFocus(part) {
-      if (skullFocus === part) return;
-      skullFocus = part;
-      applySkullFocus();
+      setFocus(skullSlot, part);
+    },
+    pickSkullPart(x, y) {
+      const hit = pickMesh(skullSlot, x, y);
+      return hit ? getSkullPart(hit) : null;
+    },
+    setBrainFocus(part) {
+      setFocus(brainSlot, part);
+    },
+    pickBrainRegion(x, y) {
+      const hit = pickMesh(brainSlot, x, y);
+      return hit ? brainRegionForMesh(hit.userData.name as string | undefined) ?? 'other' : null;
     },
     getLayerState(layer) {
       const slot = slots.find(({ name }) => name === layer)!;
@@ -350,17 +389,16 @@ export function createAnatomyOverlay(canvas: HTMLCanvasElement, onStatus: (messa
       applyHeadPose(pose, face.poseMatrix);
       compositor.render(scene, camera, featherPx, look === 'xray', lens);
     },
-    getLabelAnchors() {
-      const anchors: (LabelAnchor & { depth: number })[] = [];
+    getLabelAnchors(detailedEyes = false) {
+      const anchors: (HeadLabelAnchor & { depth: number })[] = [];
       if (!faceDrawn || realMe === 1) return anchors;
-      const showEyeDetails = !slots.some((slot) => slot.name !== 'eyes' && slot.selected);
       for (const slot of slots) {
         if (!slot.model?.visible || (look === 'xray' && slot.xray.uniforms.brightness.value <= 0)) continue;
         for (const { text, mesh, point, eyeDetail = false } of slot.labels) {
-          if (slot.name === 'eyes' && eyeDetail !== showEyeDetails) continue;
+          if (eyeDetail && !detailedEyes) continue;
           projected.copy(point).applyMatrix4(mesh.matrixWorld).project(camera);
           if (projected.z < -1 || projected.z > 1) continue;
-          anchors.push({ text, x: (1 + projected.x) / 2, y: (1 - projected.y) / 2, depth: projected.z });
+          anchors.push({ text, layer: slot.name, x: (1 + projected.x) / 2, y: (1 - projected.y) / 2, depth: projected.z });
         }
       }
       // Prefer the nearer mesh for a shared label. The label overlay checks image and lens bounds.

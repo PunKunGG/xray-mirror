@@ -1,9 +1,8 @@
 import { Matrix4 } from 'three';
-import { createAnatomyOverlay, type AnatomyOverlay } from '../anatomy/anatomy-overlay.ts';
+import { createAnatomyOverlay, type AnatomyOverlay, type SkullPart, type SkullPick } from '../anatomy/anatomy-overlay.ts';
 import { DEFAULT_FIT, readFit } from '../anatomy/fit.ts';
-import { explainCameraError, requestCamera, stopCameraTracks } from '../camera.ts';
-import { startFaceTracker } from '../tracking/face-tracker.ts';
 import type { TrackedFace } from '../tracking/types.ts';
+import { createLessonFaceCamera } from './face-camera.ts';
 
 type Step = 'upper' | 'lower' | 'quiz' | 'complete';
 const ANGLES = { left: -38, front: 0, right: 38 } as const;
@@ -23,10 +22,14 @@ const QUESTIONS = [
   { bone: 'Mandible', answer: 'mandible', text: 'Which name matches the lower jaw?', hint: 'Look for the bone that includes the chin.' },
 ] as const;
 
-interface CameraRun {
-  stream?: MediaStream;
-  stopTracking?: () => void;
-  staleTimer?: number;
+const BONE_QUESTIONS = [
+  { bone: 'Mandible', title: 'Find the mandible', hint: 'Look for the bone that includes the chin.', explanation: CONTENT.lower.description },
+  { bone: 'Maxilla', title: 'Find the maxilla', hint: 'Look just above the upper teeth, beneath the eye sockets.', explanation: CONTENT.upper.description },
+] as const;
+
+interface BoneChallenge {
+  index: number;
+  stage: 'question' | 'correct' | 'finished';
 }
 
 function modelPose(angle: Angle): TrackedFace {
@@ -42,6 +45,7 @@ export function createJawLesson(root: HTMLElement) {
   }
 
   const title = get('jaw-title');
+  const modes = get('jaw-modes');
   const useExampleButton = get('jaw-use-example');
   const useCameraButton = get('jaw-use-camera');
   const stage = get('jaw-stage');
@@ -51,7 +55,10 @@ export function createJawLesson(root: HTMLElement) {
   const status = get('jaw-status');
   const turns = get('jaw-turn-controls');
   const turnButtons = turns.querySelectorAll<HTMLButtonElement>('[data-jaw-angle]');
-  const steps = get('jaw-steps').querySelectorAll<HTMLElement>('[data-jaw-step]');
+  const progress = get('jaw-steps');
+  const steps = progress.querySelectorAll<HTMLElement>('[data-jaw-step]');
+  const activity = get('jaw-activity');
+  const lessonContent = get('jaw-lesson-content');
   const stepTitle = get('jaw-step-title');
   const description = get('jaw-description');
   const next = get('jaw-next');
@@ -59,28 +66,44 @@ export function createJawLesson(root: HTMLElement) {
   const question = get('jaw-question');
   const feedback = get('jaw-feedback');
   const restart = get('jaw-restart');
+  const openChallenge = get('jaw-open-challenge');
+  const challengeContent = get('jaw-challenge');
+  const challengeTitle = get('jaw-challenge-title');
+  const challengeInstructions = get('jaw-challenge-instructions');
+  const chooseByDescription = get<HTMLDetailsElement>('jaw-challenge-descriptions');
+  const descriptionButtons = chooseByDescription.querySelectorAll<HTMLButtonElement>('[data-jaw-part]');
+  const challengeFeedback = get('jaw-challenge-feedback');
+  const challengeNext = get('jaw-challenge-next');
+  const closeChallenge = get('jaw-close-challenge');
 
   let skull: AnatomyOverlay | undefined;
   let renderUnavailable = false;
-  let camera: CameraRun | undefined;
   let input: 'example' | 'camera' = 'example';
   let step: Step = 'upper';
   let questionIndex = 0;
+  let challenge: BoneChallenge | null = null;
   let exampleFace = modelPose('front');
-  let liveFace: TrackedFace | null = null;
-  let cameraStatus = '';
+  const camera = createLessonFaceCamera(video, {
+    readyMessage: 'Look toward the camera to show the outline of your face.',
+    detectedMessage: 'Face detected. Turn slowly to compare the jaws from each side.',
+    onVideoReady: resize,
+    onChange() { showStatus(); draw(); },
+  });
 
   function draw(): void {
-    skull?.render(input === 'example' ? exampleFace : liveFace, null);
+    skull?.render(input === 'example' ? exampleFace : camera.face, null);
   }
 
   function showStatus(): void {
     const model = skull?.getLayerState('skull');
+    updateChallengeAvailability();
     const modelStatus = renderUnavailable ? 'The 3D view is unavailable. You can finish the lesson using the descriptions.'
       : model === 'error' ? 'The skull model could not load. Select Example to retry.'
       : model === 'loading' ? 'Loading the skull model…' : '';
-    let text = input === 'example' ? 'Reference skull. Your camera is off.' : cameraStatus;
-    if (modelStatus) text = `${text} ${modelStatus}`;
+    let text = input === 'example' ? 'Reference skull. Your camera is off.' : camera.status;
+    if (challenge && (renderUnavailable || model === 'error')) {
+      text = 'The skull view is unavailable. Use Choose by description to continue.';
+    } else if (modelStatus) text = `${text} ${modelStatus}`;
     if (status.textContent !== text) status.textContent = text;
   }
 
@@ -128,6 +151,7 @@ export function createJawLesson(root: HTMLElement) {
     next.hidden = step === 'quiz' || step === 'complete';
     quiz.hidden = step !== 'quiz';
     restart.hidden = step !== 'complete';
+    openChallenge.hidden = step !== 'complete';
     if (step === 'quiz') question.textContent = QUESTIONS[questionIndex].text;
     skull?.setSkullFocus(step === 'upper' ? 'Maxilla' : step === 'lower' ? 'Mandible'
       : step === 'quiz' ? QUESTIONS[questionIndex].bone : null);
@@ -138,6 +162,63 @@ export function createJawLesson(root: HTMLElement) {
     exampleFace = modelPose(angle);
     for (const button of turnButtons) button.setAttribute('aria-pressed', String(button.dataset.jawAngle === angle));
     draw();
+  }
+
+  function setChallengeView(): void {
+    const active = challenge !== null;
+    modes.hidden = active;
+    progress.hidden = active;
+    lessonContent.hidden = active;
+    challengeContent.hidden = !active;
+    activity.setAttribute('aria-labelledby', active ? challengeTitle.id : stepTitle.id);
+    if (!active) canvas.removeAttribute('data-picking');
+  }
+
+  function updateChallengeAvailability(): void {
+    if (!challenge) return;
+    const model = skull?.getLayerState('skull');
+    const ready = model === 'ready';
+    const unavailable = renderUnavailable || model === 'error';
+    canvas.toggleAttribute('data-picking', ready && challenge.stage === 'question');
+    turns.hidden = !ready;
+    if (unavailable) chooseByDescription.open = true;
+    if (challenge.stage !== 'finished') {
+      challengeInstructions.textContent = ready ? 'Select a bone on the skull.'
+        : unavailable ? 'Select the matching area by description.'
+        : 'Wait for the skull to load, or choose by description.';
+    }
+  }
+
+  function updateChallenge(): void {
+    if (!challenge) return;
+    const current = BONE_QUESTIONS[challenge.index];
+    const finished = challenge.stage === 'finished';
+    challengeTitle.textContent = finished ? 'Practice complete' : current.title;
+    if (finished) challengeInstructions.textContent = CONTENT.complete.description;
+    challengeInstructions.hidden = challenge.stage === 'correct';
+    chooseByDescription.hidden = challenge.stage !== 'question';
+    challengeNext.hidden = challenge.stage !== 'correct';
+    challengeNext.textContent = challenge.index === BONE_QUESTIONS.length - 1 ? 'Finish' : 'Next question';
+    skull?.setSkullFocus(challenge.stage === 'correct' ? current.bone : null);
+    updateChallengeAvailability();
+    draw();
+  }
+
+  function answerChallenge(part: SkullPick): void {
+    if (challenge?.stage !== 'question') return;
+    const current = BONE_QUESTIONS[challenge.index];
+    if (part === null) {
+      challengeFeedback.textContent = 'Select a bone on the skull.';
+      return;
+    }
+    if (part !== current.bone) {
+      challengeFeedback.textContent = `${current.hint} Try again.`;
+      return;
+    }
+    challenge.stage = 'correct';
+    challengeFeedback.textContent = `Correct. ${current.explanation}`;
+    updateChallenge();
+    challengeNext.focus();
   }
 
   function setInput(nextInput: 'example' | 'camera'): void {
@@ -152,38 +233,17 @@ export function createJawLesson(root: HTMLElement) {
     showStatus();
   }
 
-  function stopCamera(): void {
-    const active = camera;
-    camera = undefined;
-    window.clearTimeout(active?.staleTimer);
-    active?.stopTracking?.();
-    if (active?.stream) stopCameraTracks(active.stream);
-    if (video.srcObject) {
-      video.pause();
-      video.srcObject = null;
-    }
-    liveFace = null;
-    cameraStatus = 'Camera is off. Choose Use camera to restart or Example to continue.';
-  }
-
-  function useExample(): void {
-    stopCamera();
-    loadSkull();
+  function useExample(retryModel = true): void {
+    camera.stop();
+    if (retryModel) loadSkull();
     skull?.setFit(DEFAULT_FIT);
     setInput('example');
-    updateLesson();
+    if (challenge) updateChallenge();
+    else updateLesson();
   }
 
-  function cameraFailed(active: CameraRun, text: string): void {
-    if (camera !== active) return;
-    stopCamera();
-    cameraStatus = `${text} Choose Example to continue or Use camera to retry.`;
-    draw();
-    showStatus();
-  }
-
-  async function useCamera(): Promise<void> {
-    if (camera) return;
+  function useCamera(): void {
+    if (camera.running || challenge) return;
     loadSkull();
     if (!skull) {
       showStatus();
@@ -191,52 +251,8 @@ export function createJawLesson(root: HTMLElement) {
     }
     skull.setFit(readFit());
     updateLesson();
-    const active: CameraRun = {};
-    camera = active;
-    cameraStatus = 'Waiting for camera permission…';
     setInput('camera');
-    try {
-      const stream = await requestCamera();
-      if (camera !== active) {
-        stopCameraTracks(stream);
-        return;
-      }
-      active.stream = stream;
-      for (const track of stream.getVideoTracks()) {
-        track.addEventListener('ended', () => cameraFailed(active, 'The camera disconnected.'), { once: true });
-      }
-      video.srcObject = stream;
-      await video.play();
-      if (camera !== active) return;
-      resize();
-      cameraStatus = 'Starting face tracking…';
-      showStatus();
-      active.stopTracking = startFaceTracker(video, {
-        onReady() {
-          if (camera !== active) return;
-          cameraStatus = 'Look toward the camera to show the outline of your face.';
-          showStatus();
-        },
-        onFrame(frame) {
-          if (camera !== active) return;
-          window.clearTimeout(active.staleTimer);
-          function showFace(face: TrackedFace | null): void {
-            if (camera !== active) return;
-            liveFace = face;
-            cameraStatus = face ? 'Face detected. Turn slowly to compare the jaws from each side.'
-              : 'Bring your face into view or switch to Example.';
-            showStatus();
-            draw();
-          }
-          const freshFor = 500 - (performance.now() - frame.timestampMs);
-          showFace(freshFor > 0 ? frame.face : null);
-          if (liveFace) active.staleTimer = window.setTimeout(() => showFace(null), freshFor);
-        },
-        onError: () => cameraFailed(active, 'Face tracking is unavailable.'),
-      });
-    } catch (error) {
-      cameraFailed(active, explainCameraError(error));
-    }
+    void camera.start();
   }
 
   function resetLesson(): void {
@@ -248,8 +264,8 @@ export function createJawLesson(root: HTMLElement) {
     updateLesson();
   }
 
-  useExampleButton.addEventListener('click', useExample);
-  useCameraButton.addEventListener('click', () => void useCamera());
+  useExampleButton.addEventListener('click', () => useExample());
+  useCameraButton.addEventListener('click', useCamera);
   for (const button of turnButtons) {
     button.addEventListener('click', () => { chooseAngle(button.dataset.jawAngle as Angle); });
   }
@@ -284,11 +300,47 @@ export function createJawLesson(root: HTMLElement) {
     resetLesson();
     stepTitle.focus();
   });
+  openChallenge.addEventListener('click', () => {
+    if (step !== 'complete' || challenge) return;
+    challenge = { index: 0, stage: 'question' };
+    challengeFeedback.textContent = '';
+    chooseByDescription.open = false;
+    setChallengeView();
+    useExample(false);
+    chooseAngle('front');
+    challengeTitle.focus();
+  });
+  canvas.addEventListener('click', (event) => {
+    if (!skull || !canvas.hasAttribute('data-picking')) return;
+    const { left, top, width, height } = canvas.getBoundingClientRect();
+    answerChallenge(skull.pickSkullPart((event.clientX - left) / width, (event.clientY - top) / height));
+  });
+  for (const button of descriptionButtons) {
+    button.addEventListener('click', () => answerChallenge(button.dataset.jawPart as SkullPart));
+  }
+  challengeNext.addEventListener('click', () => {
+    if (challenge?.stage !== 'correct') return;
+    if (challenge.index === BONE_QUESTIONS.length - 1) challenge.stage = 'finished';
+    else {
+      challenge.index++;
+      challenge.stage = 'question';
+    }
+    challengeFeedback.textContent = '';
+    updateChallenge();
+    challengeTitle.focus();
+  });
+  closeChallenge.addEventListener('click', () => {
+    challenge = null;
+    setChallengeView();
+    useExample(false);
+    openChallenge.focus();
+  });
 
   function close(): void {
+    challenge = null;
+    setChallengeView();
     observer.disconnect();
-    stopCamera();
-    draw();
+    camera.stop();
   }
 
   return {
@@ -300,7 +352,7 @@ export function createJawLesson(root: HTMLElement) {
     },
     close,
     resumeLayout() {
-      if (input === 'example') useExample();
+      if (input === 'example') useExample(!challenge);
       else showStatus();
       observer.observe(stage);
       resize();

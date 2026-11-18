@@ -1,5 +1,6 @@
 import { DEFAULT_FIT, FIT_KEYS, fitValue, readFit, saveFit, type HeadFit } from './anatomy/fit.ts';
 import { createAnatomyOverlay, type AnatomyOverlay } from './anatomy/anatomy-overlay.ts';
+import { DEFAULT_LABEL_OPTIONS, LABEL_FOCI, decodeLabelOptions } from './anatomy/label-options.ts';
 import { ANATOMY_LAYERS, PRESETS, type AnatomyLayer } from './anatomy/layers.ts';
 import { readOverlaySettings, saveOverlaySettings } from './anatomy/overlay-settings.ts';
 import { VIEWS, type ViewSettings } from './anatomy/views.ts';
@@ -7,6 +8,7 @@ import type { SkullLook } from './anatomy/xray-material.ts';
 import { explainCameraError, requestCamera, stopCameraTracks } from './camera.ts';
 import { createAnatomyLab } from './lab/anatomy-lab.ts';
 import { createJawLesson } from './lab/jaw-lesson.ts';
+import { createBrainLesson } from './lab/brain-lesson.ts';
 import { createPreview } from './preview.ts';
 import { startFaceTracker } from './tracking/face-tracker.ts';
 import { startHandTracker } from './tracking/hand-tracker.ts';
@@ -22,6 +24,15 @@ const stopButton = element<HTMLButtonElement>('stop-camera');
 const retryTracking = element<HTMLButtonElement>('retry-tracking');
 const showTracking = element<HTMLInputElement>('show-tracking');
 const showLabels = element<HTMLInputElement>('show-labels');
+const labelControls = element('label-options');
+const labelFocus = LABEL_FOCI.map((focus) => ({ focus, input: element<HTMLInputElement>(`label-focus-${focus}`) }));
+const labelHeadOptions = element('label-head-options');
+const labelHandOptions = element('label-hand-options');
+const labelHeadGroup = element<HTMLSelectElement>('label-head-group');
+const labelHandGroup = element<HTMLSelectElement>('label-hand-group');
+const labelGroupNotice = element('label-group-notice');
+const labelOverflow = element<HTMLDetailsElement>('label-overflow');
+const labelOverflowList = element('label-overflow-list');
 const status = element('camera-status');
 const message = element('camera-message');
 const stage = element('stage');
@@ -69,6 +80,7 @@ const openLabButton = element<HTMLButtonElement>('open-lab');
 const labLessons = {
   finger: { section: element('finger-lesson'), button: element('lab-select-finger') },
   jaw: { section: element('jaw-lesson'), button: element('lab-select-jaw') },
+  brain: { section: element('brain-lesson'), button: element('lab-select-brain') },
 };
 type LabLesson = keyof typeof labLessons;
 
@@ -84,11 +96,13 @@ let slowSince: number | undefined;
 let showingSlowWarning = false;
 let anatomy: AnatomyOverlay | undefined;
 let selectedLayers = new Set<AnatomyLayer>(VIEWS.classic.layers);
+let labelOptions = DEFAULT_LABEL_OPTIONS;
 let fit = readFit();
 let handsState: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
 let handCount = 0;
 let fingerLesson: ReturnType<typeof createAnatomyLab> | undefined;
 let jawLesson: ReturnType<typeof createJawLesson> | undefined;
+let brainLesson: ReturnType<typeof createBrainLesson> | undefined;
 let activeLesson: LabLesson | undefined;
 
 function setMessage(text = ''): void {
@@ -126,7 +140,8 @@ const preview = createPreview(stage, surface, video, canvas, labelCanvas, (metri
 }, {
   resize: (width, height, aspect, dpr) => anatomy?.resize(width, height, aspect, dpr),
   render: (face, lens) => anatomy?.render(face, lens),
-  getLabelAnchors: () => anatomy?.getLabelAnchors() ?? [],
+  getLabelAnchors: (detailedEyes) => anatomy?.getLabelAnchors(detailedEyes) ?? [],
+  onLabelOverflow: updateLabelOverflow,
   onHands: (count) => {
     handCount = count;
     updateHandStatus();
@@ -234,6 +249,43 @@ function matchesLayers(layers: readonly AnatomyLayer[]): boolean {
   return layers.length === selectedLayers.size && layers.every((layer) => selectedLayers.has(layer));
 }
 
+function updateLabelOverflow(names: readonly string[]): void {
+  if (!names.length) {
+    if (!labelOverflow.hidden && labelOverflow.contains(document.activeElement)) {
+      (labelOptions.focus === 'head' ? labelHeadGroup : labelHandGroup).focus();
+    }
+    labelOverflow.open = false;
+  }
+  labelOverflow.hidden = names.length === 0;
+  labelOverflowList.replaceChildren(...names.map((name) => {
+    const item = document.createElement('li');
+    item.textContent = name;
+    return item;
+  }));
+}
+
+function updateLabelGroupNotice(): void {
+  let notice = '';
+  if (labelOptions.focus === 'head' && !selectedLayers.has(labelOptions.headGroup)) {
+    notice = `Turn on ${labelHeadGroup.selectedOptions[0].textContent} in Layers to see these labels.`;
+  } else if (labelOptions.focus === 'hands' && !selectedLayers.has('hands')) {
+    notice = 'Turn on Hand bones in Layers to see these labels.';
+  }
+  labelGroupNotice.textContent = notice;
+  labelGroupNotice.hidden = !notice;
+}
+
+function syncLabelControls(): void {
+  labelControls.hidden = !showLabels.checked;
+  for (const { focus, input } of labelFocus) input.checked = labelOptions.focus === focus;
+  labelHeadOptions.hidden = labelOptions.focus !== 'head';
+  labelHandOptions.hidden = labelOptions.focus !== 'hands';
+  labelHeadGroup.value = labelOptions.headGroup;
+  labelHandGroup.value = labelOptions.handGroup;
+  updateLabelGroupNotice();
+  preview.setLabels(showLabels.checked, labelOptions);
+}
+
 function updateViewButtons(): void {
   for (const button of viewButtons) {
     const view = VIEWS[button.dataset.viewPreset as keyof typeof VIEWS];
@@ -241,7 +293,11 @@ function updateViewButtons(): void {
       brightness.valueAsNumber === view.brightness && revealMode.value === view.reveal &&
       (view.reveal === 'whole-head' || lensSize.valueAsNumber === view.lensSize) &&
       revealReal.valueAsNumber === view.realMe && revealFeather.valueAsNumber === view.feather &&
-      showLabels.checked === view.labels;
+      showLabels.checked === view.labels && (!view.labels || (
+        labelOptions.focus === view.labelOptions.focus &&
+        (labelOptions.focus !== 'head' || labelOptions.headGroup === view.labelOptions.headGroup) &&
+        (labelOptions.focus !== 'hands' || labelOptions.handGroup === view.labelOptions.handGroup)
+      ));
     button.setAttribute('aria-pressed', String(matches));
   }
 }
@@ -254,6 +310,7 @@ function updateLayers(): void {
   }
   preview.setOutline(selectedLayers.has('outline'));
   preview.setHandBones(selectedLayers.has('hands'));
+  updateLabelGroupNotice();
   if (session?.stream) anatomy?.setLayers(selectedLayers);
   syncHandTracking();
 }
@@ -268,7 +325,8 @@ function applyView(view: ViewSettings): void {
   revealReal.value = String(view.realMe);
   revealFeather.value = String(view.feather);
   showLabels.checked = view.labels;
-  preview.setLabels(view.labels);
+  labelOptions = view.labelOptions;
+  syncLabelControls();
   updateAppearance();
   updateReveal();
   updateLens();
@@ -286,6 +344,7 @@ function rememberOverlaySettings(): void {
     realMe: revealReal.valueAsNumber,
     feather: revealFeather.valueAsNumber,
     labels: showLabels.checked,
+    labelOptions,
     diagnostics: showTracking.checked,
   });
 }
@@ -413,7 +472,9 @@ startButton.addEventListener('click', () => void start());
 stopButton.addEventListener('click', () => stop());
 
 function currentLesson() {
-  return activeLesson === 'jaw' ? jawLesson : activeLesson === 'finger' ? fingerLesson : undefined;
+  if (activeLesson === 'jaw') return jawLesson;
+  if (activeLesson === 'finger') return fingerLesson;
+  if (activeLesson === 'brain') return brainLesson;
 }
 
 function selectLesson(lesson: LabLesson): void {
@@ -427,6 +488,9 @@ function selectLesson(lesson: LabLesson): void {
   if (lesson === 'jaw') {
     jawLesson ??= createJawLesson(labLessons.jaw.section);
     jawLesson.open();
+  } else if (lesson === 'brain') {
+    brainLesson ??= createBrainLesson(labLessons.brain.section);
+    brainLesson.open();
   } else {
     fingerLesson ??= createAnatomyLab(labLessons.finger.section);
     fingerLesson.open();
@@ -441,6 +505,7 @@ openLabButton.addEventListener('click', () => {
 });
 labLessons.finger.button.addEventListener('click', () => selectLesson('finger'));
 labLessons.jaw.button.addEventListener('click', () => selectLesson('jaw'));
+labLessons.brain.button.addEventListener('click', () => selectLesson('brain'));
 element('close-lab').addEventListener('click', () => {
   currentLesson()?.close();
   activeLesson = undefined;
@@ -452,7 +517,22 @@ retryTracking.addEventListener('click', () => {
   if (session?.stream) startTracking(session);
 });
 showTracking.addEventListener('change', showDebug);
-showLabels.addEventListener('change', () => preview.setLabels(showLabels.checked));
+showLabels.addEventListener('change', syncLabelControls);
+for (const { focus, input } of labelFocus) {
+  input.addEventListener('change', () => {
+    if (!input.checked) return;
+    labelOptions = { ...labelOptions, focus };
+    syncLabelControls();
+    rememberOverlaySettings();
+  });
+}
+for (const select of [labelHeadGroup, labelHandGroup]) {
+  select.addEventListener('change', () => {
+    labelOptions = decodeLabelOptions({ ...labelOptions, headGroup: labelHeadGroup.value, handGroup: labelHandGroup.value });
+    syncLabelControls();
+    rememberOverlaySettings();
+  });
+}
 lookXRay.addEventListener('change', updateAppearance);
 lookSolid.addEventListener('change', updateAppearance);
 brightness.addEventListener('input', updateAppearance);
@@ -513,6 +593,7 @@ element('reset-fit').addEventListener('click', () => {
 function dispose(): void {
   fingerLesson?.close();
   jawLesson?.dispose();
+  brainLesson?.dispose();
   stop();
   anatomy?.dispose();
   anatomy = undefined;
