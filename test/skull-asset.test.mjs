@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { brainRegionForMesh } from '../src/anatomy/brain-regions.ts';
 
 test('the skull GLB exports once into Y-up, anterior-positive meter coordinates', async () => {
   const bytes = await readFile(new URL('../public/models/skull.glb', import.meta.url));
@@ -36,4 +37,24 @@ test('all shipped anatomy meshes require Draco compression', async () => {
       for (const { extensions } of primitives) assert.ok(extensions?.[extension], layer);
     }
   }
+});
+
+test('brain lesson can select both sides of the cortex, cerebellum, and brainstem', async () => {
+  const bytes = await readFile(new URL('../public/models/brain.glb', import.meta.url));
+  const { nodes } = JSON.parse(bytes.toString('utf8', 20, 20 + bytes.readUInt32LE(12)));
+  const meshes = new Set(nodes.filter(({ mesh }) => mesh !== undefined).map(({ name }) => name));
+
+  const expectedRegions = {
+    Cerebrum: ['FJ1833', 'FJ1834', 'FJ1758', 'FJ1806'],
+    Cerebellum: ['FJ1781', 'FJ1830'],
+    Brainstem: ['FJ1770', 'FJ1817', 'FJ1775', 'FJ1822', 'FJ1769', 'FJ1831'],
+  };
+  for (const [region, ids] of Object.entries(expectedRegions)) {
+    for (const id of ids) {
+      const name = `Brain ${id}`;
+      assert.ok(meshes.has(name), name);
+      assert.equal(brainRegionForMesh(name), region, name);
+    }
+  }
+  assert.equal(brainRegionForMesh('Brain FJ1743'), undefined, 'a diencephalon mesh is outside the lesson regions');
 });

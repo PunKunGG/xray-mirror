@@ -1,5 +1,5 @@
 import { createHandBoneAppearance, drawHandBones, handLabelAnchors, palmCenter, type Lens } from './anatomy/hand-bones.ts';
-import type { LabelAnchor } from './anatomy/label-layout.ts';
+import { DEFAULT_LABEL_OPTIONS, type HeadLabelAnchor, type LabelOptions } from './anatomy/label-options.ts';
 import { createLabelOverlay } from './anatomy/label-overlay.ts';
 import type { SkullLook } from './anatomy/xray-material.ts';
 import type { FaceTrackingFrame, HandTrackingFrame, TrackedFace, TrackedHand, TrackingDelegate } from './tracking/types.ts';
@@ -13,7 +13,8 @@ const FACE_OVAL = [
 interface PreviewLayer {
   resize(width: number, height: number, aspect: number, dpr: number): void;
   render(face: TrackedFace | null, lens: Lens | null): void;
-  getLabelAnchors(): readonly LabelAnchor[];
+  getLabelAnchors(detailedEyes: boolean): readonly HeadLabelAnchor[];
+  onLabelOverflow(names: readonly string[]): void;
   onHands(count: number): void;
 }
 
@@ -60,7 +61,7 @@ export function createPreview(
   layer: PreviewLayer,
 ) {
   const context = canvas.getContext('2d');
-  const labels = createLabelOverlay(labelCanvas);
+  const labels = createLabelOverlay(labelCanvas, layer.onLabelOverflow);
   const renderRate = new FrameRate();
   const trackingRate = new FrameRate();
   let renderId: number | undefined;
@@ -71,6 +72,7 @@ export function createPreview(
   let debug = false;
   let outline = false;
   let handBones = false;
+  let labelOptions = DEFAULT_LABEL_OPTIONS;
   let handAppearance = createHandBoneAppearance('xray', 1);
   let lensSize = 0;
   let latestHands: HandTrackingFrame | null = null;
@@ -139,13 +141,10 @@ export function createPreview(
     const face = current?.face ?? null;
     layer.render(face, lens);
     if (!labelCanvas.hidden) {
-      const handAnchors = handBones && handAppearance.opacity > 0 ? handLabelAnchors(hands) : [];
-      // Use the nose tip when head labels are visible, otherwise center on the hands.
-      const headAnchors = layer.getLabelAnchors();
-      const centerX = face && headAnchors.length ? face.landmarks[3]
-        : handAnchors.length ? hands.reduce((sum, hand) => sum + palmCenter(hand.landmarks).x, 0) / hands.length
-          : 0.5;
-      labels.render(headAnchors, handAnchors, centerX, lens);
+      const handAnchors = labelOptions.focus !== 'head' && handBones && handAppearance.opacity > 0 ? handLabelAnchors(hands) : [];
+      const headAnchors = labelOptions.focus === 'hands' ? []
+        : layer.getLabelAnchors(labelOptions.focus === 'head' && labelOptions.headGroup === 'eyes');
+      labels.render(headAnchors, handAnchors, labelOptions, lens);
     }
     if (current !== painted) {
       painted = current;
@@ -255,9 +254,10 @@ export function createPreview(
       handAppearance = createHandBoneAppearance(look, brightness);
       canvasDirty = true;
     },
-    setLabels(show: boolean) {
+    setLabels(show: boolean, options: LabelOptions) {
+      labelOptions = options;
       labelCanvas.hidden = !show;
-      if (!show) labels.clear();
+      labels.clear();
     },
     setLens(size: number) {
       lensSize = size;
