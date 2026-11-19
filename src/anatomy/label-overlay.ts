@@ -81,7 +81,8 @@ export function createLabelOverlay(canvas: HTMLCanvasElement, onOverflow: (names
         }
         return { ...anchor, subject, id, width, x: left + (1 - anchor.x) * imageWidth, y: top + anchor.y * imageHeight };
       });
-      const limit = options.focus === 'overview' ? (compact ? 4 : 6) : (compact ? 5 : 8);
+      const limit = options.focus === 'everything' ? anchors.length
+        : options.focus === 'overview' ? (compact ? 4 : 6) : (compact ? 5 : 8);
       const rows = layoutNearLabels(anchors, { left, top, width: imageWidth, height: imageHeight }, {
         limit, maxLeader: compact ? 64 : 96, rowHeight: compact ? 18 : 22,
       }, slots);

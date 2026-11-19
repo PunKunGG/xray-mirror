@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEFAULT_LABEL_OPTIONS, decodeLabelOptions, labelsForFocus, type HeadLabelAnchor } from '../src/anatomy/label-options.ts';
+import { DEFAULT_LABEL_OPTIONS, decodeLabelOptions, labelsForFocus, type HandLabelAnchor, type HeadLabelAnchor } from '../src/anatomy/label-options.ts';
 import { VIEWS } from '../src/anatomy/views.ts';
 
 test('defaults legacy settings to Overview and validates current label preferences', () => {
@@ -23,4 +23,26 @@ test('Overview favors representatives from multiple head layers and Head filters
     'Frontal bone', 'Cerebrum', 'Mandible', 'Brainstem',
   ]);
   assert.deepEqual(labelsForFocus(head, [], { ...DEFAULT_LABEL_OPTIONS, focus: 'head', headGroup: 'brain' }), brain);
+});
+
+test('Everything includes all head groups and labels for both hands regardless of the saved subgroups', () => {
+  const position = { x: 0.5, y: 0.5 };
+  const head: HeadLabelAnchor[] = [
+    { text: 'Mandible', layer: 'skull', ...position },
+    { text: 'Cerebrum', layer: 'brain', ...position },
+    { text: 'Eye muscles', layer: 'muscles', ...position },
+    { text: 'Cornea', layer: 'eyes', ...position },
+  ];
+  const hands: HandLabelAnchor[] = [
+    { text: 'Radius', handId: 2, group: 'forearm', ...position },
+    { text: 'Phalanges', handId: 1, group: 'fingers', overview: true, ...position },
+    { text: 'Carpus', handId: 2, group: 'wrist', overview: true, ...position },
+    { text: 'Metacarpal', handId: 1, group: 'palm', ...position },
+  ];
+  const options = decodeLabelOptions({ focus: 'everything', headGroup: 'skull', handGroup: 'fingers' });
+  assert.equal(options.focus, 'everything');
+  const visible = labelsForFocus(head, hands, options);
+  assert.equal(visible.length, head.length + hands.length);
+  assert.deepEqual(new Set(visible), new Set([...head, ...hands]));
+  assert.deepEqual(visible.slice(0, 3), [head[0], hands[1], hands[0]]);
 });

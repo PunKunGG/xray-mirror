@@ -41,7 +41,7 @@ Browser-only web app. Uses the webcam to track the user's head and hands and ove
 - FR-16: Reveal dropdown with modes: "Whole head" (overlay covers the entire head; default when no hand is detected) and "X-ray lens (follows your hand)" (a circular lens that follows the hand and reveals the anatomy inside it). The lens size slider sets the diameter from 10% to 100% of the shorter preview side.
 
 ### Labels
-- FR-17: **Show labels** displays names near their head or hand anchors, with short leaders and non-overlapping boxes inside the camera image. **Overview** reserves space for visible subjects and shows up to six labels, or four below 460 px of preview width. **Head** and **Hands** show a selected group with up to eight labels, or five below 460 px. Eligible detail labels that cannot fit appear in a collapsible list. Label focus is independent of anatomy layers.
+- FR-17: **Show labels** displays names near their head or hand anchors, with short leaders and non-overlapping boxes inside the camera image. **Overview** reserves space for visible subjects and shows up to six labels, or four below 460 px of preview width. **Head** and **Hands** show a selected group with up to eight labels, or five below 460 px. **Everything** includes all eligible labels and expands **More labels** to show names that cannot fit. Label focus is independent of anatomy layers.
 
 ### Info
 - FR-18: Visible notice: for demonstration only. The app scales and aligns a 3D reference dataset of one adult to the head. Camera frames are processed on the device and never uploaded.
