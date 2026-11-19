@@ -32,6 +32,7 @@ const labelHeadGroup = element<HTMLSelectElement>('label-head-group');
 const labelHandGroup = element<HTMLSelectElement>('label-hand-group');
 const labelGroupNotice = element('label-group-notice');
 const labelOverflow = element<HTMLDetailsElement>('label-overflow');
+const labelOverflowSummary = element('label-overflow-summary');
 const labelOverflowList = element('label-overflow-list');
 const status = element('camera-status');
 const message = element('camera-message');
@@ -252,9 +253,13 @@ function matchesLayers(layers: readonly AnatomyLayer[]): boolean {
 function updateLabelOverflow(names: readonly string[]): void {
   if (!names.length) {
     if (!labelOverflow.hidden && labelOverflow.contains(document.activeElement)) {
-      (labelOptions.focus === 'head' ? labelHeadGroup : labelHandGroup).focus();
+      const control = labelOptions.focus === 'head' ? labelHeadGroup
+        : labelOptions.focus === 'hands' ? labelHandGroup : labelFocus.find(({ input }) => input.checked)?.input;
+      control?.focus();
     }
     labelOverflow.open = false;
+  } else if (labelOptions.focus === 'everything' && labelOverflow.hidden) {
+    labelOverflow.open = true;
   }
   labelOverflow.hidden = names.length === 0;
   labelOverflowList.replaceChildren(...names.map((name) => {
@@ -280,6 +285,7 @@ function syncLabelControls(): void {
   for (const { focus, input } of labelFocus) input.checked = labelOptions.focus === focus;
   labelHeadOptions.hidden = labelOptions.focus !== 'head';
   labelHandOptions.hidden = labelOptions.focus !== 'hands';
+  labelOverflowSummary.textContent = labelOptions.focus === 'everything' ? 'More labels' : 'More labels in this group';
   labelHeadGroup.value = labelOptions.headGroup;
   labelHandGroup.value = labelOptions.handGroup;
   updateLabelGroupNotice();

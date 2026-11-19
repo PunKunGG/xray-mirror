@@ -142,8 +142,8 @@ export function createPreview(
     layer.render(face, lens);
     if (!labelCanvas.hidden) {
       const handAnchors = labelOptions.focus !== 'head' && handBones && handAppearance.opacity > 0 ? handLabelAnchors(hands) : [];
-      const headAnchors = labelOptions.focus === 'hands' ? []
-        : layer.getLabelAnchors(labelOptions.focus === 'head' && labelOptions.headGroup === 'eyes');
+      const detailedEyes = labelOptions.focus === 'everything' || (labelOptions.focus === 'head' && labelOptions.headGroup === 'eyes');
+      const headAnchors = labelOptions.focus === 'hands' ? [] : layer.getLabelAnchors(detailedEyes);
       labels.render(headAnchors, handAnchors, labelOptions, lens);
     }
     if (current !== painted) {

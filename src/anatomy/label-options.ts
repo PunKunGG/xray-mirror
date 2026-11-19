@@ -1,6 +1,6 @@
 import { MODEL_LAYERS, type ModelLayer } from './layers.ts';
 
-export const LABEL_FOCI = ['overview', 'head', 'hands'] as const;
+export const LABEL_FOCI = ['overview', 'head', 'hands', 'everything'] as const;
 export const HAND_LABEL_GROUPS = ['fingers', 'palm', 'wrist', 'forearm'] as const;
 export type LabelFocus = (typeof LABEL_FOCI)[number];
 export type HandLabelGroup = (typeof HAND_LABEL_GROUPS)[number];
@@ -69,6 +69,7 @@ export function labelsForFocus(
   if (options.focus === 'hands') {
     return interleave(handSubjects(hands.filter(({ group, overview }) => group === options.handGroup && !overview)));
   }
+  if (options.focus === 'everything') return interleave([[...head], ...handSubjects(hands)]);
 
   const primary: HeadLabelAnchor[] = [];
   const secondary: HeadLabelAnchor[] = [];

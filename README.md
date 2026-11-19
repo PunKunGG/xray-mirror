@@ -31,7 +31,7 @@ Under **Mixed reality**, **Whole head** reveals the full tracked anatomy. **Real
 
 Choose **X-ray lens (follows your hand)** and move an open hand in front of the camera. The circle follows one palm and reveals head anatomy inside it. **Lens size** sets the circle diameter from 10% to 100% of the shorter preview side. The reveal returns to **Whole head** while no hand is detected and resumes when a hand returns. **Hand bones** draws the articulated skeletons of up to two hands across the preview.
 
-Turn on **Show labels** under **Quick view**. **Overview** shows a few labels near the visible head and hands. Choose **Head** or **Hands**, then select a group to see detailed names. Open **More labels in this group** to read names that could not fit in the preview. Label focus is independent of the active anatomy layers. In lens mode, head labels require an anchor inside the circle.
+Turn on **Show labels** under **Quick view**. **Overview** shows a few labels near the visible head and hands. Choose **Head** or **Hands**, then select a group to see detailed names. Open **More labels in this group** to read names that could not fit in the preview. **Everything** shows labels from all visible anatomy groups at once and opens **More labels** when some names need extra space. Label focus is independent of the active anatomy layers. In lens mode, head labels require an anchor inside the circle.
 
 The **Skull** layer labels the frontal, parietal, temporal, occipital, and zygomatic bones, plus the maxilla and mandible. Paired bones share one label. It points to the nearer anchor within the active view.
 
